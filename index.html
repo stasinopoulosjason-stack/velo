@@ -36,7 +36,7 @@ h2{font-size:18px;font-weight:800;margin:36px 0 6px}
 .tabs button.on{color:var(--ink);border-color:var(--acc)}
 .stage{border-radius:14px;overflow:hidden;line-height:0;position:relative}
 #map-container{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;display:none}
-canvas#cv{width:100%;height:auto;aspect-ratio:4/5;display:block;position:relative;z-index:2}
+canvas#cv{width:100%;height:auto;aspect-ratio:4/5;display:block;position:relative;z-index:2;pointer-events:none}
 .stage.clear{background:conic-gradient(#8884 25%,#0000 0 50%,#8884 0 75%,#0000 0) 0 0/24px 24px,#556}
 .ctl{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
 .seg{display:flex;border:1.5px solid var(--line);border-radius:999px;padding:3px}
@@ -103,7 +103,7 @@ li.ride.sel .nm{color:var(--acc)}
 </section>
 </div>
 <script>
-const MAP_TILE_KEY = ''; // Optional key if using a private map/terrain provider
+const MAP_TILE_KEY = ''; 
 const DEM_TILES = ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png' + (MAP_TILE_KEY ? '?key=' + MAP_TILE_KEY : '')];
 const STYLE_LIGHT = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
 const STYLE_DARK = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
@@ -140,7 +140,8 @@ function project(p,b){
   return p.map(q=>[ox+(q[1]-l)*k*s,oy+(z-q[0])*s]);
 }
 function path(x,xy,end){
-  const i=Math.floor(end);x.beginPath();x.moveTo(xy[0][0],xy[0][1]);
+  const i=Math.min(xy.length - 1, Math.floor(end));
+  x.beginPath();x.moveTo(xy[0][0],xy[0][1]);
   for(let j=1;j<=i;j++)x.lineTo(xy[j][0],xy[j][1]);
   let tip=xy[i];
   if(i<xy.length-1){const f=end-i,a=xy[i],b=xy[i+1];tip=[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f];x.lineTo(tip[0],tip[1])}
@@ -171,7 +172,7 @@ function render(x,W,H,r,st,prog,is3d=false){
   
   x.fillStyle=ink;x.font=F(800,58*s);x.fillText(fit(x,r.name,W-2*pad),pad,150*s);
   x.fillStyle=mute;x.font=F(500,30*s);x.fillText(dateStr(r),pad,196*s);
-  const e=prog*(n-1),i=Math.floor(e);
+  const e=prog*(n-1),i=Math.min(n-1, Math.floor(e));
   
   if(!is3d) {
     const xy=project(p,{x:pad,y:250*s,w:W-2*pad,h:620*s});
@@ -207,95 +208,127 @@ const vst=()=>(tab==='vid'||tab==='3d')&&style==='clear'?'dark':style;
 /* ---------- MapLibre 3D ---------- */
 function initMap() {
   if (map) return;
+  if (typeof maplibregl === 'undefined') {
+    msg('3D library loading or blocked. Please wait or check connection.');
+    return;
+  }
+  // Set currentMapStyle right away so we don't accidentally reload it later
+  currentMapStyle = style === 'dark' || style === 'clear' ? STYLE_DARK : STYLE_LIGHT;
+  
   map = new maplibregl.Map({
     container: 'map-container',
-    style: style === 'dark' || style === 'clear' ? STYLE_DARK : STYLE_LIGHT,
+    style: currentMapStyle,
     interactive: false,
     preserveDrawingBuffer: true,
     pitch: 65,
     zoom: 13
   });
   
-  map.on('styledata', () => {
-    if (!map.getSource('terrain')) {
-      map.addSource('terrain', { type: 'raster-dem', tiles: DEM_TILES, encoding: 'terrarium', tileSize: 256, maxzoom: 14 });
-      map.setTerrain({ source: 'terrain', exaggeration: 1.5 });
-      map.addSource('route', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } } });
-      map.addLayer({ id: 'route-line', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': css('--acc'), 'line-width': 6 } });
-      mapLoaded = true;
+  map.on('style.load', () => {
+    mapLoaded = true;
+    try {
+      if (!map.getSource('terrain')) {
+        map.addSource('terrain', { type: 'raster-dem', tiles: DEM_TILES, encoding: 'terrarium', tileSize: 256, maxzoom: 14 });
+        map.setTerrain({ source: 'terrain', exaggeration: 1.5 });
+      }
+      if (!map.getSource('route')) {
+        map.addSource('route', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } } });
+        map.addLayer({ id: 'route-line', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': (style === 'dark' || style === 'clear' ? '#7F9BFF' : '#2A45F0'), 'line-width': 6 } });
+      }
       if (cur && tab === '3d' && !playing) updateMap(1);
+    } catch(err) {
+      console.error("Map layer error:", err);
     }
   });
-  map.on('error', e => msg('Map error: ' + (e.error?.message || 'Failed to load terrain.')));
+  map.on('error', e => console.warn('Map notice:', e));
 }
 
 function updateMap(prog) {
   if (!map || !mapLoaded || !cur) return;
-  const p = cur.pts, n = p.length, e = prog * (n - 1), i = Math.floor(e);
-  let tip = [p[i][1], p[i][0]];
-  let a = p[i], b = p[Math.min(n-1, i+1)];
-  if (i < n - 1) {
-    const f = e - i;
-    tip = [a[1] + (b[1] - a[1]) * f, a[0] + (b[0] - a[0]) * f];
-  }
-  const p1 = p[Math.max(0, i-2)], p2 = p[Math.min(n-1, i+2)];
-  const dLon = (p2[1] - p1[1]) * R, lat1 = p1[0] * R, lat2 = p2[0] * R;
-  const y = Math.sin(dLon) * Math.cos(lat2);
-  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-  const bearing = Math.atan2(y, x) * 180 / Math.PI;
+  try {
+    const p = cur.pts, n = p.length;
+    if (n < 2) return;
+    
+    const e = prog * (n - 1), i = Math.min(n - 1, Math.floor(e));
+    let tip = [p[i][1], p[i][0]];
+    
+    if (i < n - 1) {
+      const f = e - i, a = p[i], b = p[i+1];
+      tip = [a[1] + (b[1] - a[1]) * f, a[0] + (b[0] - a[0]) * f];
+    }
+    
+    const p1 = p[Math.max(0, i-2)], p2 = p[Math.min(n-1, i+2)];
+    let bearing = 0;
+    if (p1 && p2) {
+      const dLon = (p2[1] - p1[1]) * R, lat1 = p1[0] * R, lat2 = p2[0] * R;
+      const y = Math.sin(dLon) * Math.cos(lat2);
+      const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+      bearing = Math.atan2(y, x) * 180 / Math.PI;
+    }
+    
+    // Fallback if bearing is somehow invalid
+    if (isNaN(bearing) || !isFinite(bearing)) bearing = 0;
 
-  const coords = p.slice(0, i+1).map(q => [q[1], q[0]]);
-  if (i < n - 1) coords.push(tip);
+    const coords = p.slice(0, i+1).map(q => [q[1], q[0]]);
+    if (i < n - 1) coords.push(tip);
 
-  if (map.getSource('route')) {
-    map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
+    if (coords.length >= 2 && map.getSource('route')) {
+      map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
+    }
+    map.jumpTo({ center: tip, bearing: bearing, pitch: 65, zoom: 13.5 });
+  } catch(err) {
+    console.error("updateMap error:", err);
   }
-  map.jumpTo({ center: tip, bearing: bearing, pitch: 65, zoom: 13.5 });
 }
 
 /* ---------- UI ---------- */
 function draw(){
-  cancelAnimationFrame(raf);playing=false;
-  const is3d=tab==='3d', vid=tab==='vid'||is3d, W=vid?720:1080, H=vid?900:1350;
-  if(cv.width!==W){cv.width=W;cv.height=H}
-  if(vid&&style==='clear')style='dark';
+  try {
+    cancelAnimationFrame(raf);playing=false;
+    const is3d=tab==='3d', vid=tab==='vid'||is3d, W=vid?720:1080, H=vid?900:1350;
+    if(cv.width!==W){cv.width=W;cv.height=H}
+    if(vid&&style==='clear')style='dark';
 
-  if (is3d) {
-    $('#map-container').style.display = 'block';
-    initMap();
-    if (mapLoaded) {
-      const targetStyle = style === 'dark' || style === 'clear' ? STYLE_DARK : STYLE_LIGHT;
-      if (currentMapStyle !== targetStyle) {
-        currentMapStyle = targetStyle;
-        map.setStyle(targetStyle);
-      } else {
-        updateMap(1);
+    if (is3d) {
+      $('#map-container').style.display = 'block';
+      initMap();
+      if (mapLoaded && typeof map !== 'undefined') {
+        const targetStyle = style === 'dark' || style === 'clear' ? STYLE_DARK : STYLE_LIGHT;
+        if (currentMapStyle !== targetStyle) {
+          currentMapStyle = targetStyle;
+          mapLoaded = false;
+          map.setStyle(targetStyle);
+        } else {
+          updateMap(1);
+        }
       }
+    } else {
+      $('#map-container').style.display = 'none';
     }
-  } else {
-    $('#map-container').style.display = 'none';
+
+    render(cx,W,H,cur,vst(),1,is3d);
+    
+    $('#stage').classList.toggle('clear',style==='clear');
+    document.querySelectorAll('#styles button').forEach(b=>{b.setAttribute('aria-pressed',b.dataset.st===style);if(b.dataset.st==='clear')b.disabled=vid});
+    document.querySelectorAll('.tabs button').forEach(b=>{const on=b.dataset.tab===tab;b.classList.toggle('on',on);b.setAttribute('aria-selected',on)});
+    
+    $('#play').hidden = tab === 'img';
+    $('#play').textContent = 'Play';
+    $('#save_png').hidden = tab === 'vid';
+    $('#save_vid').hidden = tab === 'img';
+    $('#save_png').textContent = is3d ? 'Save 3D PNG' : 'Save PNG';
+    $('#save_vid').textContent = is3d ? 'Save 3D video' : 'Save video';
+    $('#save_png').disabled = busy;
+    $('#save_vid').disabled = busy;
+
+    cv.setAttribute('aria-label',`Route of ${cur.name}`);
+    const d=derive(cur),km=d.cum[d.cum.length-1]/1000,it=[[km.toFixed(1)+' km','Distance']];
+    if(d.hasT){it.push([fmtT(d.ct[d.ct.length-1]).join(' '),'Moving time']);it.push([(km/(d.ct[d.ct.length-1]/3600)).toFixed(1)+' km/h','Average speed'])}
+    if(d.hasE)it.push([Math.round(d.cg[d.cg.length-1])+' m','Elevation gain']);
+    $('#stats').replaceChildren(...it.map(([v,l])=>{const e=document.createElement('div'),b=document.createElement('b'),s=document.createElement('span');b.textContent=v;s.textContent=l;e.append(b,s);return e}));
+  } catch(err) {
+    console.error("draw error:", err);
   }
-
-  render(cx,W,H,cur,vst(),1,is3d);
-  
-  $('#stage').classList.toggle('clear',style==='clear');
-  document.querySelectorAll('#styles button').forEach(b=>{b.setAttribute('aria-pressed',b.dataset.st===style);if(b.dataset.st==='clear')b.disabled=vid});
-  document.querySelectorAll('.tabs button').forEach(b=>{const on=b.dataset.tab===tab;b.classList.toggle('on',on);b.setAttribute('aria-selected',on)});
-  
-  $('#play').hidden = tab === 'img';
-  $('#play').textContent = 'Play';
-  $('#save_png').hidden = tab === 'vid';
-  $('#save_vid').hidden = tab === 'img';
-  $('#save_png').textContent = is3d ? 'Save 3D PNG' : 'Save PNG';
-  $('#save_vid').textContent = is3d ? 'Save 3D video' : 'Save video';
-  $('#save_png').disabled = busy;
-  $('#save_vid').disabled = busy;
-
-  cv.setAttribute('aria-label',`Route of ${cur.name}`);
-  const d=derive(cur),km=d.cum[d.cum.length-1]/1000,it=[[km.toFixed(1)+' km','Distance']];
-  if(d.hasT){it.push([fmtT(d.ct[d.ct.length-1]).join(' '),'Moving time']);it.push([(km/(d.ct[d.ct.length-1]/3600)).toFixed(1)+' km/h','Average speed'])}
-  if(d.hasE)it.push([Math.round(d.cg[d.cg.length-1])+' m','Elevation gain']);
-  $('#stats').replaceChildren(...it.map(([v,l])=>{const e=document.createElement('div'),b=document.createElement('b'),s=document.createElement('span');b.textContent=v;s.textContent=l;e.append(b,s);return e}));
 }
 function thumb(c,r){
   const x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);
@@ -361,18 +394,30 @@ $('#demo').onclick=()=>{
 };
 
 /* ---------- tabs, styles, play ---------- */
-document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;msg('');draw()});
-document.querySelectorAll('#styles button').forEach(b=>b.onclick=()=>{style=b.dataset.st;draw()});
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
+  try { tab=b.dataset.tab; msg(''); draw(); } catch(err) { console.error(err); }
+});
+document.querySelectorAll('#styles button').forEach(b=>b.onclick=()=>{
+  try { style=b.dataset.st; draw(); } catch(err) { console.error(err); }
+});
 $('#play').onclick=()=>{
-  cancelAnimationFrame(raf);const t0=performance.now(); playing=true;
-  const is3d=tab==='3d';
-  const loop=now=>{
-    const ms=now-t0;
-    if(is3d) updateMap(frame(ms));
-    render(cx,cv.width,cv.height,cur,vst(),frame(ms),is3d);
-    if(ms<DUR)raf=requestAnimationFrame(loop);else { $('#play').textContent='Replay'; playing=false; }
-  };
-  raf=requestAnimationFrame(loop);
+  try {
+    cancelAnimationFrame(raf);const t0=performance.now(); playing=true;
+    const is3d=tab==='3d', st=vst();
+    const loop=now=>{
+      const ms=now-t0;
+      if(is3d) updateMap(frame(ms));
+      render(cx,cv.width,cv.height,cur,st,frame(ms),is3d);
+      if(ms<DUR)raf=requestAnimationFrame(loop);else { 
+        $('#play').textContent='Replay'; playing=false; 
+        if(is3d) updateMap(1);
+        render(cx,cv.width,cv.height,cur,st,1,is3d);
+      }
+    };
+    raf=requestAnimationFrame(loop);
+  } catch(err) {
+    console.error(err); playing=false;
+  }
 };
 
 /* ---------- saving ---------- */
@@ -401,8 +446,8 @@ async function savePNG(){
   const is3d=tab==='3d';
   const c=document.createElement('canvas');c.width=1080;c.height=1350;
   const x=c.getContext('2d');
-  if(is3d && map){
-    x.drawImage(map.getCanvas(),0,0,1080,1350);
+  if(is3d && map && mapLoaded){
+    try { x.drawImage(map.getCanvas(),0,0,1080,1350); } catch(e){}
     render(x,1080,1350,cur,style,1,true);
   }else{
     render(x,1080,1350,cur,style,1);
@@ -426,9 +471,9 @@ async function saveVideo(){
     const loop=now=>{
       const ms=now-t0;
       if(is3d){
-        updateMap(frame(ms));
+        try{ updateMap(frame(ms)); } catch(e){}
         x.clearRect(0,0,720,900);
-        x.drawImage(map.getCanvas(),0,0,720,900);
+        if(map && mapLoaded){ try{ x.drawImage(map.getCanvas(),0,0,720,900); } catch(e){} }
         render(x,720,900,cur,st,frame(ms),true);
       } else {
         render(x,720,900,cur,st,frame(ms));
@@ -443,11 +488,11 @@ async function saveVideo(){
 
 $('#save_png').onclick=async()=>{
   if(busy||!cur)return;busy=true;$('#save_png').disabled=true;
-  try{await savePNG()}finally{busy=false;$('#save_png').disabled=false}
+  try{await savePNG()}catch(e){msg('Failed to save.');console.error(e);}finally{busy=false;$('#save_png').disabled=false}
 };
 $('#save_vid').onclick=async()=>{
   if(busy||!cur)return;busy=true;$('#save_vid').disabled=true;
-  try{await saveVideo()}finally{busy=false;$('#save_vid').disabled=false}
+  try{await saveVideo()}catch(e){msg('Failed to save.');console.error(e);}finally{busy=false;$('#save_vid').disabled=false}
 };
 
 /* ---------- start ---------- */
