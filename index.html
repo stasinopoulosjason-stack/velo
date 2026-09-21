@@ -1,431 +1,4511 @@
-from pathlib import Path
-
-html = r'''<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Velo">
 <meta name="mobile-web-app-capable" content="yes">
+
 <title>Velo</title>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&display=swap" rel="stylesheet">
+
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+
 <style>
-:root{--bg:#F2F4F0;--ink:#14201B;--mute:#67736C;--line:#DCE1DB;--acc:#2A45F0;--accink:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0D1310;--ink:#EAF0EB;--mute:#8A968E;--line:#24302A;--acc:#7F9BFF;--accink:#0D1310}}
-:root[data-theme="dark"]{--bg:#0D1310;--ink:#EAF0EB;--mute:#8A968E;--line:#24302A;--acc:#7F9BFF;--accink:#0D1310}
-*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.45 Archivo,system-ui,-apple-system,sans-serif}
-.wrap{max-width:640px;margin:auto;padding:0 18px 48px}
-header{display:flex;align-items:center;justify-content:space-between;padding:18px 0 14px;gap:12px}
-h1{margin:0;font-size:30px;font-weight:800;letter-spacing:-.03em}h2{font-size:18px;font-weight:800;margin:36px 0 6px}
-.acts,.row{display:flex;gap:8px;flex-wrap:wrap}.btn{font:600 14px Archivo,system-ui,sans-serif;color:var(--ink);background:transparent;border:1.5px solid var(--line);border-radius:999px;padding:9px 16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}.btn.pri{background:var(--acc);border-color:var(--acc);color:var(--accink)}.btn.danger{border-color:#d66;color:#b33}.btn:disabled{opacity:.45;cursor:default}
-.empty{padding:44px 0;color:var(--mute);max-width:44ch}.empty strong{display:block;color:var(--ink);font-size:22px;font-weight:800;margin-bottom:6px}
-.tabs{display:flex;gap:22px;border-bottom:1.5px solid var(--line);margin-bottom:14px;overflow:auto}.tabs button{font:600 15px Archivo;color:var(--mute);background:none;border:0;border-bottom:3px solid transparent;padding:10px 0;margin-bottom:-1.5px;cursor:pointer;white-space:nowrap}.tabs button.on{color:var(--ink);border-color:var(--acc)}
-.stage{border-radius:14px;overflow:hidden;line-height:0;position:relative;background:#111}.stage.clear{background:conic-gradient(#8884 25%,#0000 0 50%,#8884 0 75%,#0000 0) 0 0/24px 24px,#556}
-#map-container{position:absolute;inset:0;z-index:1;display:none}.map-live{display:block!important}
-canvas#cv{width:100%;height:auto;aspect-ratio:4/5;display:block;position:relative;z-index:2}
-.livebar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;border:1.5px solid var(--line);border-radius:14px;margin:14px 0 0}
-.live-dot{width:9px;height:9px;border-radius:50%;background:#e34;display:inline-block;margin-right:7px}.livebar strong{font-size:15px}.livevals{display:flex;gap:14px;font-size:13px;color:var(--mute)}.livevals b{color:var(--ink);font-size:16px}
-.ctl{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}.seg{display:flex;border:1.5px solid var(--line);border-radius:999px;padding:3px}.seg button{font:600 13px Archivo;color:var(--mute);background:none;border:0;border-radius:999px;padding:6px 14px;cursor:pointer}.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
-.msg{min-height:1.4em;margin:10px 0 0;color:var(--mute);font-size:14px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px}.stats b{display:block;font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1.1}.stats span{font-size:13px;color:var(--mute)}
-.preview{margin-top:20px}.preview video{width:100%;display:block;border-radius:14px;background:#000}.preview h2{margin-top:28px}
-ul{list-style:none;margin:0;padding:0}li.ride{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1.5px solid var(--line)}li.ride button.open{display:flex;align-items:center;gap:14px;flex:1;min-width:0;background:none;border:0;color:inherit;text-align:left;cursor:pointer;padding:0;font:inherit}li.ride canvas{width:54px;height:68px;flex:none}.nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mt{font-size:13px;color:var(--mute)}li.ride.sel .nm{color:var(--acc)}.del{font:500 13px Archivo;color:var(--mute);background:none;border:0;cursor:pointer;padding:8px}
-@media(max-width:480px){header{align-items:flex-start}.acts{justify-content:flex-end}.stats{grid-template-columns:repeat(2,1fr)}.livevals{gap:8px}.livebar{align-items:flex-start;flex-direction:column}}
-:focus-visible{outline:2.5px solid var(--acc);outline-offset:2px}
+:root{
+  --bg:#F2F4F0;
+  --ink:#14201B;
+  --mute:#67736C;
+  --line:#DCE1DB;
+  --acc:#2A45F0;
+  --accink:#fff;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1310;
+    --ink:#EAF0EB;
+    --mute:#8A968E;
+    --line:#24302A;
+    --acc:#7F9BFF;
+    --accink:#0D1310;
+  }
+}
+
+:root[data-theme="dark"]{
+  --bg:#0D1310;
+  --ink:#EAF0EB;
+  --mute:#8A968E;
+  --line:#24302A;
+  --acc:#7F9BFF;
+  --accink:#0D1310;
+}
+
+*{box-sizing:border-box}
+
+html{
+  scroll-padding-top:env(safe-area-inset-top,0px);
+}
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font:400 16px/1.45 Archivo,system-ui,-apple-system,sans-serif;
+}
+
+.wrap{
+  max-width:640px;
+  margin:0 auto;
+  padding:0 18px 48px;
+}
+
+header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:18px 0 14px;
+}
+
+h1{
+  margin:0;
+  font-size:30px;
+  font-weight:800;
+  letter-spacing:-.03em;
+}
+
+h2{
+  font-size:18px;
+  font-weight:800;
+  margin:36px 0 6px;
+}
+
+.acts,
+.row{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.btn{
+  font:600 14px Archivo,system-ui,sans-serif;
+  color:var(--ink);
+  background:transparent;
+  border:1.5px solid var(--line);
+  border-radius:999px;
+  padding:9px 16px;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  white-space:nowrap;
+}
+
+.btn.pri{
+  background:var(--acc);
+  border-color:var(--acc);
+  color:var(--accink);
+}
+
+.btn.danger{
+  border-color:#d66;
+  color:#b33;
+}
+
+.btn:disabled{
+  opacity:.45;
+  cursor:default;
+}
+
+:focus-visible{
+  outline:2.5px solid var(--acc);
+  outline-offset:2px;
+}
+
+.empty{
+  padding:48px 0;
+  color:var(--mute);
+  max-width:44ch;
+}
+
+.empty strong{
+  display:block;
+  color:var(--ink);
+  font-size:22px;
+  font-weight:800;
+  margin-bottom:6px;
+}
+
+.tabs{
+  display:flex;
+  gap:22px;
+  border-bottom:1.5px solid var(--line);
+  margin-bottom:14px;
+  overflow-x:auto;
+}
+
+.tabs button{
+  font:600 15px Archivo,system-ui,sans-serif;
+  color:var(--mute);
+  background:none;
+  border:0;
+  border-bottom:3px solid transparent;
+  padding:10px 0;
+  margin-bottom:-1.5px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+
+.tabs button.on{
+  color:var(--ink);
+  border-color:var(--acc);
+}
+
+.stage{
+  border-radius:14px;
+  overflow:hidden;
+  line-height:0;
+  position:relative;
+  background:#111;
+}
+
+.stage.clear{
+  background:
+    conic-gradient(#8884 25%,#0000 0 50%,#8884 0 75%,#0000 0)
+    0 0/24px 24px,#556;
+}
+
+#map-container{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  display:none;
+}
+
+canvas#cv{
+  width:100%;
+  height:auto;
+  aspect-ratio:4/5;
+  display:block;
+  position:relative;
+  z-index:2;
+}
+
+.livebar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:13px 14px;
+  border:1.5px solid var(--line);
+  border-radius:14px;
+  margin-top:14px;
+}
+
+.live-dot{
+  width:9px;
+  height:9px;
+  border-radius:50%;
+  background:#e33;
+  display:inline-block;
+  margin-right:7px;
+}
+
+.livebar strong{
+  font-size:15px;
+}
+
+.livevals{
+  display:flex;
+  gap:14px;
+  font-size:13px;
+  color:var(--mute);
+}
+
+.livevals b{
+  color:var(--ink);
+  font-size:16px;
+}
+
+.ctl{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-top:14px;
+  flex-wrap:wrap;
+}
+
+.seg{
+  display:flex;
+  border:1.5px solid var(--line);
+  border-radius:999px;
+  padding:3px;
+}
+
+.seg button{
+  font:600 13px Archivo,system-ui,sans-serif;
+  color:var(--mute);
+  background:none;
+  border:0;
+  border-radius:999px;
+  padding:6px 14px;
+  cursor:pointer;
+}
+
+.seg button[aria-pressed="true"]{
+  background:var(--ink);
+  color:var(--bg);
+}
+
+.seg button:disabled{
+  opacity:.4;
+  cursor:default;
+}
+
+.msg{
+  min-height:1.4em;
+  margin:10px 0 0;
+  color:var(--mute);
+  font-size:14px;
+}
+
+.stats{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+  margin-top:18px;
+}
+
+.stats b{
+  display:block;
+  font-size:24px;
+  font-weight:800;
+  letter-spacing:-.02em;
+  line-height:1.1;
+}
+
+.stats span{
+  font-size:13px;
+  color:var(--mute);
+}
+
+.preview{
+  margin-top:20px;
+}
+
+.preview h2{
+  margin-top:28px;
+}
+
+.preview video{
+  display:block;
+  width:100%;
+  border-radius:14px;
+  background:#000;
+}
+
+ul{
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+
+li.ride{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:12px 0;
+  border-bottom:1.5px solid var(--line);
+}
+
+li.ride button.open{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  flex:1;
+  min-width:0;
+  background:none;
+  border:0;
+  color:inherit;
+  text-align:left;
+  cursor:pointer;
+  padding:0;
+  font:inherit;
+}
+
+li.ride canvas{
+  width:54px;
+  height:68px;
+  flex:none;
+}
+
+.nm{
+  font-weight:600;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.mt{
+  font-size:13px;
+  color:var(--mute);
+}
+
+li.ride.sel .nm{
+  color:var(--acc);
+}
+
+.del{
+  font:500 13px Archivo,system-ui,sans-serif;
+  color:var(--mute);
+  background:none;
+  border:0;
+  cursor:pointer;
+  padding:8px;
+}
+
+@media(max-width:480px){
+  header{
+    align-items:flex-start;
+  }
+
+  .acts{
+    justify-content:flex-end;
+  }
+
+  .stats{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .livebar{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .livevals{
+    gap:9px;
+  }
+}
 </style>
 </head>
+
 <body>
+
 <div class="wrap">
+
 <header>
   <h1>Velo</h1>
+
   <div class="acts">
     <button class="btn pri" id="start">Start ride</button>
-    <button class="btn" id="demo">Demo ride</button>
-    <label class="btn" tabindex="0" id="imp">Import GPX<input id="file" type="file" accept=".gpx,application/gpx+xml,text/xml" hidden></label>
+
+    <button class="btn" id="demo">
+      Demo ride
+    </button>
+
+    <label class="btn" tabindex="0" id="imp">
+      Import GPX
+      <input
+        id="file"
+        type="file"
+        accept=".gpx,application/gpx+xml,text/xml"
+        hidden
+      >
+    </label>
   </div>
 </header>
 
 <section id="empty" class="empty">
   <strong>Your rides show up here.</strong>
-  Start a live ride with your iPhone GPS, import a GPX file, or load the demo ride.
+  Start a live ride with your iPhone GPS, import a GPX file,
+  or load the demo ride.
 </section>
 
 <section id="view" hidden>
+
   <div class="tabs" role="tablist">
-    <button role="tab" data-tab="img" class="on">Route image</button>
-    <button role="tab" data-tab="vid">Flyover video</button>
-    <button role="tab" data-tab="3d">3D flyover</button>
+
+    <button
+      role="tab"
+      data-tab="img"
+      class="on"
+      aria-selected="true">
+      Route image
+    </button>
+
+    <button
+      role="tab"
+      data-tab="vid"
+      aria-selected="false">
+      Flyover video
+    </button>
+
+    <button
+      role="tab"
+      data-tab="3d"
+      aria-selected="false">
+      3D flyover
+    </button>
+
   </div>
 
   <div class="stage" id="stage">
+
     <div id="map-container"></div>
-    <canvas id="cv" width="1080" height="1350"></canvas>
+
+    <canvas
+      id="cv"
+      width="1080"
+      height="1350"
+      role="img"
+      aria-label="Route preview">
+    </canvas>
+
   </div>
 
   <div class="livebar" id="livebar" hidden>
-    <div><span class="live-dot"></span><strong id="liveStatus">Ready</strong></div>
-    <div class="livevals">
-      <span><b id="liveSpeed">0.0</b> km/h</span>
-      <span><b id="liveDistance">0.00</b> km</span>
-      <span><b id="liveTime">00:00</b></span>
+
+    <div>
+      <span class="live-dot"></span>
+      <strong id="liveStatus">Ready</strong>
     </div>
+
+    <div class="livevals">
+      <span>
+        <b id="liveSpeed">0.0</b> km/h
+      </span>
+
+      <span>
+        <b id="liveDistance">0.00</b> km
+      </span>
+
+      <span>
+        <b id="liveTime">00:00</b>
+      </span>
+    </div>
+
   </div>
 
   <div class="ctl">
+
     <div class="seg" id="styles">
-      <button data-st="light" aria-pressed="true">Light</button>
-      <button data-st="dark" aria-pressed="false">Dark</button>
-      <button data-st="clear" aria-pressed="false">Clear</button>
+      <button data-st="light" aria-pressed="true">
+        Light
+      </button>
+
+      <button data-st="dark" aria-pressed="false">
+        Dark
+      </button>
+
+      <button data-st="clear" aria-pressed="false">
+        Clear
+      </button>
     </div>
+
     <div class="row">
-      <button class="btn" id="play" hidden>Play</button>
-      <button class="btn" id="pause" hidden>Pause</button>
-      <button class="btn" id="finish" hidden>Finish ride</button>
-      <button class="btn" id="save_png">Save PNG</button>
-      <button class="btn pri" id="save_vid">Save video</button>
+
+      <button class="btn" id="play" hidden>
+        Play
+      </button>
+
+      <button class="btn" id="pause" hidden>
+        Pause
+      </button>
+
+      <button class="btn" id="finish" hidden>
+        Finish ride
+      </button>
+
+      <button class="btn" id="save_png">
+        Save PNG
+      </button>
+
+      <button class="btn pri" id="save_vid">
+        Save video
+      </button>
+
     </div>
+
   </div>
+
   <p class="msg" id="msg" role="status"></p>
+
   <div class="stats" id="stats"></div>
 
   <div class="preview" id="preview" hidden>
+
     <h2>3D flyover preview</h2>
-    <video id="previewVideo" controls playsinline preload="metadata"></video>
+
+    <video
+      id="previewVideo"
+      controls
+      playsinline
+      preload="metadata">
+    </video>
+
   </div>
+
 </section>
 
 <section id="listwrap" hidden>
+
   <h2>Rides</h2>
+
   <ul id="rides"></ul>
+
 </section>
+
 </div>
 
 <script>
-/* ---------- providers: change these constants if you switch map/terrain providers ---------- */
-const MAP_TILE_KEY='';
-const DEM_TILE_URL='https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
-const DEM_TILES=[MAP_TILE_KEY?DEM_TILE_URL+'?key='+encodeURIComponent(MAP_TILE_KEY):DEM_TILE_URL];
-const STYLE_LIGHT='https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
-const STYLE_DARK='https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
-const MAPLIBRE_VERSION='4.7.1';
 
-const $=s=>document.querySelector(s),R=Math.PI/180,DUR=9000;
-const cv=$('#cv'),cx=cv.getContext('2d');
-let rides=[],cur=null,tab='img',style='light',raf=0,playing=false,busy=false;
-let map=null,mapLoaded=false,mapFailed=false,currentMapStyle='',cameraBearing=null;
-let liveState='idle',watchId=null,liveStart=0,pausedAt=0,totalPaused=0,lastPoint=null,livePts=[],lastPreviewURL=null;
+/* ============================================================
+   VELO CONFIGURATION
+   ============================================================ */
 
-try{rides=JSON.parse(localStorage.getItem('velo:rides')||'[]')}catch(e){}
-const msg=t=>{$('#msg').textContent=t||''};
-const persist=()=>{try{localStorage.setItem('velo:rides',JSON.stringify(rides.map(r=>({id:r.id,name:r.name,date:r.date,pts:r.pts,video:r.video||null}))))}catch(e){msg('Storage is full. Delete an old ride to keep new ones.')}};
-const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'ride';
+const MAPLIBRE_VERSION = '4.7.1';
+
+const MAP_TILE_KEY = '';
+
+const DEM_TILE_URL =
+  'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+
+const DEM_TILES = [
+  MAP_TILE_KEY
+    ? DEM_TILE_URL + '?key=' + encodeURIComponent(MAP_TILE_KEY)
+    : DEM_TILE_URL
+];
+
+const STYLE_LIGHT =
+  'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+
+const STYLE_DARK =
+  'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+
+
+/* ============================================================
+   CORE
+   ============================================================ */
+
+const $ = s => document.querySelector(s);
+
+const R = Math.PI / 180;
+
+const DUR = 9000;
+
+const cv = $('#cv');
+
+const cx = cv.getContext('2d');
+
+let rides = [];
+
+let cur = null;
+
+let tab = 'img';
+
+let style = 'light';
+
+let raf = 0;
+
+let playing = false;
+
+let busy = false;
+
+
+/* ============================================================
+   LIVE GPS STATE
+   ============================================================ */
+
+let liveState = 'idle';
+
+let watchId = null;
+
+let liveStart = 0;
+
+let pausedAt = 0;
+
+let totalPaused = 0;
+
+let lastPoint = null;
+
+let livePts = [];
+
+
+/* ============================================================
+   MAP STATE
+   ============================================================ */
+
+let map = null;
+
+let mapLoaded = false;
+
+let mapFailed = false;
+
+let currentMapStyle = '';
+
+let cameraBearing = null;
+
+
+/* ============================================================
+   VIDEO PREVIEW
+   ============================================================ */
+
+let lastPreviewURL = null;
+
+
+/* ============================================================
+   STORAGE
+   ============================================================ */
+
+try {
+  rides = JSON.parse(
+    localStorage.getItem('velo:rides') || '[]'
+  );
+} catch(e) {
+  rides = [];
+}
+
+const msg = text => {
+  $('#msg').textContent = text || '';
+};
+
+const persist = () => {
+
+  try {
+
+    localStorage.setItem(
+      'velo:rides',
+      JSON.stringify(
+        rides.map(r => ({
+          id:r.id,
+          name:r.name,
+          date:r.date,
+          pts:r.pts
+        }))
+      )
+    );
+
+  } catch(e) {
+
+    msg(
+      'Storage is full. Delete an old ride to keep new ones.'
+    );
+
+  }
+
+};
+
+const css = v =>
+  getComputedStyle(document.documentElement)
+    .getPropertyValue(v)
+    .trim();
+
+
+/* ============================================================
+   RIDE MATH
+   ============================================================ */
 
 function derive(r){
- if(r._d)return r._d;
- const p=r.pts,n=p.length,cum=[0],ct=[0],cg=[0],hasT=p[0][3]!=null&&p[n-1][3]>p[0][3];
- const el=p.map((q,i)=>{let s=0,c=0;for(let j=i-2;j<=i+2;j++)if(p[j]&&p[j][2]!=null){s+=p[j][2];c++}return c?s/c:0});
- for(let i=1;i<n;i++){
-  const a=p[i-1],b=p[i],d=Math.hypot((b[1]-a[1])*R*Math.cos((a[0]+b[0])/2*R),(b[0]-a[0])*R)*6371000;
-  const dt=hasT?b[3]-a[3]:0,mv=hasT&&dt>0&&dt<300&&d/dt>.3;
-  cum[i]=cum[i-1]+d;ct[i]=ct[i-1]+(mv?dt:0);cg[i]=cg[i-1]+Math.max(0,el[i]-el[i-1]);
- }
- return r._d={cum,ct,cg,el,hasT:hasT&&ct[n-1]>0,hasE:p.some(q=>q[2]!=null)};
+
+  if(r._d) return r._d;
+
+  const p = r.pts;
+
+  const n = p.length;
+
+  const cum = [0];
+
+  const ct = [0];
+
+  const cg = [0];
+
+  const hasT =
+    p[0][3] != null &&
+    p[n-1][3] > p[0][3];
+
+  const el = p.map((q,i)=>{
+
+    let sum = 0;
+
+    let count = 0;
+
+    for(let j=i-2;j<=i+2;j++){
+
+      if(
+        p[j] &&
+        p[j][2] != null &&
+        Number.isFinite(p[j][2])
+      ){
+
+        sum += p[j][2];
+
+        count++;
+
+      }
+
+    }
+
+    return count ? sum / count : 0;
+
+  });
+
+  for(let i=1;i<n;i++){
+
+    const a = p[i-1];
+
+    const b = p[i];
+
+    const d = Math.hypot(
+
+      (b[1]-a[1]) *
+      R *
+      Math.cos(
+        (a[0]+b[0]) / 2 * R
+      ),
+
+      (b[0]-a[0]) * R
+
+    ) * 6371000;
+
+    const dt =
+      hasT
+        ? b[3]-a[3]
+        : 0;
+
+    const moving =
+      hasT &&
+      dt > 0 &&
+      dt < 300 &&
+      d/dt > .3;
+
+    cum[i] =
+      cum[i-1] + d;
+
+    ct[i] =
+      ct[i-1] +
+      (moving ? dt : 0);
+
+    cg[i] =
+      cg[i-1] +
+      Math.max(
+        0,
+        el[i]-el[i-1]
+      );
+
+  }
+
+  return r._d = {
+    cum,
+    ct,
+    cg,
+    el,
+    hasT:hasT && ct[n-1] > 0,
+    hasE:p.some(
+      q => q[2] != null
+    )
+  };
+
 }
+
+
+/* ============================================================
+   MAP PROJECTION FOR 2D ART
+   ============================================================ */
+
 function project(p,b){
- let a=1e9,z=-1e9,l=1e9,o=-1e9;for(const q of p){a=Math.min(a,q[0]);z=Math.max(z,q[0]);l=Math.min(l,q[1]);o=Math.max(o,q[1])}
- const k=Math.cos((a+z)/2*R),w=Math.max((o-l)*k,1e-9),h=Math.max(z-a,1e-9),s=Math.min(b.w/w,b.h/h),ox=b.x+(b.w-w*s)/2,oy=b.y+(b.h-h*s)/2;
- return p.map(q=>[ox+(q[1]-l)*k*s,oy+(z-q[0])*s]);
+
+  let minLat = Infinity;
+
+  let maxLat = -Infinity;
+
+  let minLon = Infinity;
+
+  let maxLon = -Infinity;
+
+  for(const q of p){
+
+    minLat = Math.min(minLat,q[0]);
+
+    maxLat = Math.max(maxLat,q[0]);
+
+    minLon = Math.min(minLon,q[1]);
+
+    maxLon = Math.max(maxLon,q[1]);
+
+  }
+
+  const k =
+    Math.cos(
+      (minLat+maxLat)/2 * R
+    );
+
+  const w =
+    Math.max(
+      (maxLon-minLon)*k,
+      1e-9
+    );
+
+  const h =
+    Math.max(
+      maxLat-minLat,
+      1e-9
+    );
+
+  const s =
+    Math.min(
+      b.w/w,
+      b.h/h
+    );
+
+  const ox =
+    b.x +
+    (b.w-w*s)/2;
+
+  const oy =
+    b.y +
+    (b.h-h*s)/2;
+
+  return p.map(q=>[
+    ox+(q[1]-minLon)*k*s,
+    oy+(maxLat-q[0])*s
+  ]);
+
 }
+
+
+/* ============================================================
+   PATH DRAWING
+   ============================================================ */
+
 function path(x,xy,end){
- const i=Math.max(0,Math.floor(end));x.beginPath();x.moveTo(xy[0][0],xy[0][1]);for(let j=1;j<=i;j++)x.lineTo(xy[j][0],xy[j][1]);
- let tip=xy[i];if(i<xy.length-1){const f=end-i,a=xy[i],b=xy[i+1];tip=[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f];x.lineTo(tip[0],tip[1])}return tip;
-}
-const fmtT=s=>{s=Math.max(0,Math.round(s));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),c=s%60,z=n=>String(n).padStart(2,'0');return h?[h+':'+z(m),'h']:[m+':'+z(c),'min']};
-const fit=(x,t,max)=>{if(x.measureText(t).width<=max)return t;while(t.length>1&&x.measureText(t+'…').width>max)t=t.slice(0,-1);return t+'…'};
-const dateStr=r=>new Date(r.date).toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
-const T={
- light:{bg:'#F2F4F0',ink:'#14201B',mute:'#67736C',acc:'#2A45F0',cas:'#F2F4F0',dot:'rgba(20,32,27,.09)'},
- dark:{bg:'#0D1310',ink:'#EAF0EB',mute:'#8A968E',acc:'#7F9BFF',cas:'#0D1310',dot:'rgba(234,240,235,.08)'},
- clear:{bg:null,ink:'#fff',mute:'rgba(255,255,255,.78)',acc:'#fff',cas:'rgba(0,0,0,.28)',dot:null}
+  const i =
+    Math.max(
+      0,
+      Math.min(
+        xy.length-1,
+        Math.floor(end)
+      )
+    );
+
+  x.beginPath();
+
+  x.moveTo(
+    xy[0][0],
+    xy[0][1]
+  );
+
+  for(
+    let j=1;
+    j<=i;
+    j++
+  ){
+
+    x.lineTo(
+      xy[j][0],
+      xy[j][1]
+    );
+
+  }
+
+  let tip = xy[i];
+
+  if(i < xy.length-1){
+
+    const f = end-i;
+
+    const a = xy[i];
+
+    const b = xy[i+1];
+
+    tip = [
+      a[0] +
+      (b[0]-a[0])*f,
+
+      a[1] +
+      (b[1]-a[1])*f
+    ];
+
+    x.lineTo(
+      tip[0],
+      tip[1]
+    );
+
+  }
+
+  return tip;
+
+}
+
+
+/* ============================================================
+   FORMATTERS
+   ============================================================ */
+
+const fmtT = s => {
+
+  s = Math.max(
+    0,
+    Math.round(s)
+  );
+
+  const h =
+    Math.floor(s/3600);
+
+  const m =
+    Math.floor(
+      s%3600/60
+    );
+
+  const c =
+    s%60;
+
+  const z =
+    n =>
+      String(n).padStart(2,'0');
+
+  return h
+    ? [h+':'+z(m),'h']
+    : [m+':'+z(c),'min'];
+
 };
-const F=(w,px)=>`${w} ${px}px Archivo,system-ui,sans-serif`;
 
-function render(x,W,H,r,st,prog,is3d=false){
- const t=T[st],d=derive(r),p=r.pts,n=p.length,s=W/1080,pad=90*s;
- x.clearRect(0,0,W,H);x.textAlign='left';x.textBaseline='alphabetic';
- if(!is3d&&t.bg){x.fillStyle=t.bg;x.fillRect(0,0,W,H);x.fillStyle=t.dot;for(let a=60*s;a<W;a+=60*s)for(let b=60*s;b<H;b+=60*s){x.beginPath();x.arc(a,b,2.2*s,0,7);x.fill()}}
- const ink=is3d?(st==='dark'||st==='clear'?'#EAF0EB':'#14201B'):t.ink,mute=is3d?(st==='dark'||st==='clear'?'#8A968E':'#67736C'):t.mute;
- x.fillStyle=ink;x.font=F(800,58*s);x.fillText(fit(x,r.name,W-2*pad),pad,150*s);
- x.fillStyle=mute;x.font=F(500,30*s);x.fillText(dateStr(r),pad,196*s);
- const e=prog*(n-1),i=Math.min(n-1,Math.floor(e));
- if(!is3d){
-  const xy=project(p,{x:pad,y:250*s,w:W-2*pad,h:620*s});x.lineJoin=x.lineCap='round';
-  path(x,xy,e);x.lineWidth=20*s;x.strokeStyle=t.cas;x.stroke();const tip=path(x,xy,e);x.lineWidth=11*s;x.strokeStyle=t.acc;x.stroke();
-  x.beginPath();x.arc(xy[0][0],xy[0][1],15*s,0,7);x.fillStyle=t.bg||'#fff';x.fill();x.lineWidth=7*s;x.strokeStyle=t.ink;x.stroke();
-  x.beginPath();x.arc(tip[0],tip[1],19*s,0,7);x.fillStyle=t.acc;x.fill();x.lineWidth=7*s;x.strokeStyle=t.bg||'#fff';x.stroke();
- }
- const col=(W-2*pad)/3,y=1000*s;
- const stat=(k,v,u,l)=>{const px=pad+k*col;x.fillStyle=ink;x.font=F(800,76*s);x.fillText(v,px,y);const w=x.measureText(v).width;x.fillStyle=mute;x.font=F(600,32*s);x.fillText(u,px+w+8*s,y);x.font=F(500,28*s);x.fillText(l,px,y+46*s)};
- stat(0,(d.cum[i]/1000).toFixed(1),'km','Distance');
- if(d.hasT){const[v,u]=fmtT(d.ct[i]);stat(1,v,u,'Moving time')}else stat(1,'—','','Moving time');
- if(d.hasE)stat(2,String(Math.round(d.cg[i])),'m','Elevation gain');else stat(2,'—','','Elevation gain');
- let mn=Math.min(...d.el),mx=Math.max(...d.el);if(d.hasE&&mx-mn<5)mx=mn+5;
- if(d.hasE){
-  const bx=pad,bw=W-2*pad,bot=1260*s,bh=150*s,X=k=>bx+k/(n-1)*bw,Y=k=>bot-(d.el[k]-mn)/(mx-mn)*bh;
-  x.beginPath();x.moveTo(X(0),bot);for(let k=0;k<=i;k++)x.lineTo(X(k),Y(k));x.lineTo(X(i),bot);x.closePath();x.globalAlpha=.22;x.fillStyle=t.acc;x.fill();x.globalAlpha=1;
-  x.beginPath();for(let k=0;k<=i;k++)k?x.lineTo(X(k),Y(k)):x.moveTo(X(k),Y(k));x.lineWidth=4*s;x.strokeStyle=t.acc;x.stroke();
- }
- x.fillStyle=mute;x.font=F(800,32*s);x.fillText('Velo',pad,1315*s);
+const fmtClock = s => {
+
+  s = Math.max(
+    0,
+    Math.round(s)
+  );
+
+  return (
+    String(
+      Math.floor(s/60)
+    ).padStart(2,'0')
+    +
+    ':'
+    +
+    String(
+      s%60
+    ).padStart(2,'0')
+  );
+
+};
+
+const fit = (x,t,max) => {
+
+  if(
+    x.measureText(t).width <= max
+  ) return t;
+
+  while(
+    t.length > 1 &&
+    x.measureText(t+'…').width > max
+  ){
+
+    t = t.slice(0,-1);
+
+  }
+
+  return t+'…';
+
+};
+
+const dateStr = r =>
+  new Date(r.date)
+    .toLocaleDateString(
+      undefined,
+      {
+        weekday:'long',
+        day:'numeric',
+        month:'long',
+        year:'numeric'
+      }
+    );
+
+
+/* ============================================================
+   RENDER THEMES
+   ============================================================ */
+
+const T = {
+
+  light:{
+    bg:'#F2F4F0',
+    ink:'#14201B',
+    mute:'#67736C',
+    acc:'#2A45F0',
+    cas:'#F2F4F0',
+    dot:'rgba(20,32,27,.09)'
+  },
+
+  dark:{
+    bg:'#0D1310',
+    ink:'#EAF0EB',
+    mute:'#8A968E',
+    acc:'#7F9BFF',
+    cas:'#0D1310',
+    dot:'rgba(234,240,235,.08)'
+  },
+
+  clear:{
+    bg:null,
+    ink:'#fff',
+    mute:'rgba(255,255,255,.78)',
+    acc:'#fff',
+    cas:'rgba(0,0,0,.28)',
+    dot:null
+  }
+
+};
+
+const F =
+  (w,px) =>
+    `${w} ${px}px Archivo,system-ui,sans-serif`;
+
+
+/* ============================================================
+   MAIN CANVAS RENDERER
+   ============================================================ */
+
+function render(
+  x,
+  W,
+  H,
+  r,
+  st,
+  prog,
+  is3d=false
+){
+
+  const t = T[st];
+
+  const d = derive(r);
+
+  const p = r.pts;
+
+  const n = p.length;
+
+  const s = W/1080;
+
+  const pad = 90*s;
+
+  x.clearRect(
+    0,
+    0,
+    W,
+    H
+  );
+
+  x.textAlign='left';
+
+  x.textBaseline='alphabetic';
+
+
+  if(
+    !is3d &&
+    t.bg
+  ){
+
+    x.fillStyle=t.bg;
+
+    x.fillRect(
+      0,
+      0,
+      W,
+      H
+    );
+
+    x.fillStyle=t.dot;
+
+    for(
+      let a=60*s;
+      a<W;
+      a+=60*s
+    ){
+
+      for(
+        let b=60*s;
+        b<H;
+        b+=60*s
+      ){
+
+        x.beginPath();
+
+        x.arc(
+          a,
+          b,
+          2.2*s,
+          0,
+          Math.PI*2
+        );
+
+        x.fill();
+
+      }
+
+    }
+
+  }
+
+
+  const ink =
+    is3d
+      ? (
+        st==='dark' ||
+        st==='clear'
+          ? '#EAF0EB'
+          : '#14201B'
+      )
+      : t.ink;
+
+  const mute =
+    is3d
+      ? (
+        st==='dark' ||
+        st==='clear'
+          ? '#8A968E'
+          : '#67736C'
+      )
+      : t.mute;
+
+
+  x.fillStyle=ink;
+
+  x.font=F(
+    800,
+    58*s
+  );
+
+  x.fillText(
+    fit(
+      x,
+      r.name,
+      W-2*pad
+    ),
+    pad,
+    150*s
+  );
+
+
+  x.fillStyle=mute;
+
+  x.font=F(
+    500,
+    30*s
+  );
+
+  x.fillText(
+    dateStr(r),
+    pad,
+    196*s
+  );
+
+
+  const e =
+    prog*(n-1);
+
+  const i =
+    Math.min(
+      n-1,
+      Math.floor(e)
+    );
+
+
+  if(!is3d){
+
+    const xy =
+      project(
+        p,
+        {
+          x:pad,
+          y:250*s,
+          w:W-2*pad,
+          h:620*s
+        }
+      );
+
+    x.lineJoin='round';
+
+    x.lineCap='round';
+
+
+    path(
+      x,
+      xy,
+      e
+    );
+
+    x.lineWidth=20*s;
+
+    x.strokeStyle=t.cas;
+
+    x.stroke();
+
+
+    const tip =
+      path(
+        x,
+        xy,
+        e
+      );
+
+    x.lineWidth=11*s;
+
+    x.strokeStyle=t.acc;
+
+    x.stroke();
+
+
+    x.beginPath();
+
+    x.arc(
+      xy[0][0],
+      xy[0][1],
+      15*s,
+      0,
+      Math.PI*2
+    );
+
+    x.fillStyle=
+      t.bg || '#fff';
+
+    x.fill();
+
+    x.lineWidth=7*s;
+
+    x.strokeStyle=t.ink;
+
+    x.stroke();
+
+
+    x.beginPath();
+
+    x.arc(
+      tip[0],
+      tip[1],
+      19*s,
+      0,
+      Math.PI*2
+    );
+
+    x.fillStyle=t.acc;
+
+    x.fill();
+
+    x.lineWidth=7*s;
+
+    x.strokeStyle=
+      t.bg || '#fff';
+
+    x.stroke();
+
+  }
+
+
+  const col =
+    (W-2*pad)/3;
+
+  const y =
+    1000*s;
+
+
+  const stat =
+    (k,v,u,l) => {
+
+      const px =
+        pad+k*col;
+
+      x.fillStyle=ink;
+
+      x.font=
+        F(
+          800,
+          76*s
+        );
+
+      x.fillText(
+        v,
+        px,
+        y
+      );
+
+      const w =
+        x.measureText(v).width;
+
+      if(u){
+
+        x.fillStyle=mute;
+
+        x.font=
+          F(
+            600,
+            32*s
+          );
+
+        x.fillText(
+          u,
+          px+w+8*s,
+          y
+        );
+
+      }
+
+      x.fillStyle=mute;
+
+      x.font=
+        F(
+          500,
+          28*s
+        );
+
+      x.fillText(
+        l,
+        px,
+        y+46*s
+      );
+
+    };
+
+
+  stat(
+    0,
+    (d.cum[i]/1000).toFixed(1),
+    'km',
+    'Distance'
+  );
+
+
+  if(d.hasT){
+
+    const [v,u] =
+      fmtT(d.ct[i]);
+
+    stat(
+      1,
+      v,
+      u,
+      'Moving time'
+    );
+
+  }else{
+
+    stat(
+      1,
+      '—',
+      '',
+      'Moving time'
+    );
+
+  }
+
+
+  if(d.hasE){
+
+    stat(
+      2,
+      String(
+        Math.round(
+          d.cg[i]
+        )
+      ),
+      'm',
+      'Elevation gain'
+    );
+
+  }else{
+
+    stat(
+      2,
+      '—',
+      '',
+      'Elevation gain'
+    );
+
+  }
+
+
+  if(d.hasE){
+
+    let mn =
+      Math.min(...d.el);
+
+    let mx =
+      Math.max(...d.el);
+
+    if(mx-mn<5)
+      mx=mn+5;
+
+    const bx=pad;
+
+    const bw=W-2*pad;
+
+    const bot=1260*s;
+
+    const bh=150*s;
+
+    const X =
+      k =>
+        bx+
+        k/(n-1)*bw;
+
+    const Y =
+      k =>
+        bot-
+        (d.el[k]-mn)/
+        (mx-mn)*bh;
+
+
+    x.beginPath();
+
+    x.moveTo(
+      X(0),
+      bot
+    );
+
+    for(
+      let k=0;
+      k<=i;
+      k++
+    ){
+
+      x.lineTo(
+        X(k),
+        Y(k)
+      );
+
+    }
+
+    x.lineTo(
+      X(i),
+      bot
+    );
+
+    x.closePath();
+
+    x.globalAlpha=.22;
+
+    x.fillStyle=t.acc;
+
+    x.fill();
+
+    x.globalAlpha=1;
+
+
+    x.beginPath();
+
+    for(
+      let k=0;
+      k<=i;
+      k++
+    ){
+
+      if(k)
+        x.lineTo(
+          X(k),
+          Y(k)
+        );
+      else
+        x.moveTo(
+          X(k),
+          Y(k)
+        );
+
+    }
+
+    x.lineWidth=4*s;
+
+    x.strokeStyle=t.acc;
+
+    x.stroke();
+
+  }
+
+
+  x.fillStyle=mute;
+
+  x.font=
+    F(
+      800,
+      32*s
+    );
+
+  x.fillText(
+    'Velo',
+    pad,
+    1315*s
+  );
+
 }
-const ease=u=>u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
-const frame=ms=>ease(Math.min(1,Math.max(0,(ms-600)/7200)));
-const vst=()=>((tab==='vid'||tab==='3d')&&style==='clear')?'dark':style;
 
-function normalizeAngle(a){return((a+540)%360)-180}
-function smoothBearing(target){if(cameraBearing==null)cameraBearing=target;else cameraBearing+=normalizeAngle(target-cameraBearing)*.18;return cameraBearing}
+
+/* ============================================================
+   ANIMATION
+   ============================================================ */
+
+const ease =
+  u =>
+    u<.5
+      ? 2*u*u
+      : 1-Math.pow(-2*u+2,2)/2;
+
+const frame =
+  ms =>
+    ease(
+      Math.min(
+        1,
+        Math.max(
+          0,
+          (ms-600)/7200
+        )
+      )
+    );
+
+const vst =
+  () =>
+    (
+      tab==='vid' ||
+      tab==='3d'
+    ) &&
+    style==='clear'
+      ? 'dark'
+      : style;
+
+
+/* ============================================================
+   MAPLIBRE 3D
+   ============================================================ */
+
+function normalizeAngle(a){
+  return (
+    (a+540)%360
+  )-180;
+}
+
+function smoothBearing(target){
+
+  if(
+    cameraBearing === null
+  ){
+
+    cameraBearing=target;
+
+  }else{
+
+    cameraBearing +=
+      normalizeAngle(
+        target-cameraBearing
+      )*.18;
+
+  }
+
+  return cameraBearing;
+}
+
 
 function initMap(){
- if(map||mapFailed)return;
- try{
-  map=new maplibregl.Map({container:'map-container',style:style==='dark'||style==='clear'?STYLE_DARK:STYLE_LIGHT,interactive:false,preserveDrawingBuffer:true,center:[0,0],zoom:2,pitch:65});
-  map.on('styledata',()=>{
-   if(!map.getSource('terrain')){
-    try{
-     map.addSource('terrain',{type:'raster-dem',tiles:DEM_TILES,encoding:'terrarium',tileSize:256,maxzoom:14});
-     map.addLayer({id:'terrain-hillshade',type:'hillshade',source:'terrain',paint:{
-      'hillshade-exaggeration':.55,'hillshade-illumination-direction':315,
-      'hillshade-shadow-color':style==='dark'?'#101713':'#87918A',
-      'hillshade-highlight-color':style==='dark'?'#526058':'#FFFFFF',
-      'hillshade-accent-color':style==='dark'?'#28342D':'#B8C0BA'
-     }});
-     map.setTerrain({source:'terrain',exaggeration:1.5});
-     map.addSource('route',{type:'geojson',data:{type:'Feature',geometry:{type:'LineString',coordinates:[]}}});
-     map.addLayer({id:'route-line',type:'line',source:'route',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':css('--acc'),'line-width':6}});
-     mapLoaded=true;
-     if(cur&&tab==='3d')updateMap(1);
-    }catch(e){mapFailed=true;msg('3D terrain is unavailable. 2D routes still work.')}
-   }else mapLoaded=true;
-  });
-  map.on('error',e=>{if(tab==='3d'&&e?.error)msg('3D terrain is unavailable. 2D routes still work.')});
- }catch(e){mapFailed=true;msg('3D map is unavailable. 2D routes still work.')}
+
+  if(map || mapFailed)
+    return;
+
+  try{
+
+    map =
+      new maplibregl.Map({
+
+        container:
+          'map-container',
+
+        style:
+          style==='dark' ||
+          style==='clear'
+            ? STYLE_DARK
+            : STYLE_LIGHT,
+
+        interactive:false,
+
+        preserveDrawingBuffer:true,
+
+        center:[
+          0,
+          0
+        ],
+
+        zoom:2,
+
+        pitch:65
+
+      });
+
+
+    map.on(
+      'styledata',
+      () => {
+
+        if(
+          map.getSource(
+            'terrain'
+          )
+        ){
+
+          mapLoaded=true;
+
+          return;
+
+        }
+
+
+        try{
+
+          map.addSource(
+            'terrain',
+            {
+              type:'raster-dem',
+              tiles:DEM_TILES,
+              encoding:'terrarium',
+              tileSize:256,
+              maxzoom:14
+            }
+          );
+
+
+          map.addLayer({
+
+            id:
+              'terrain-hillshade',
+
+            type:
+              'hillshade',
+
+            source:
+              'terrain',
+
+            paint:{
+
+              'hillshade-exaggeration':
+                .55,
+
+              'hillshade-illumination-direction':
+                315,
+
+              'hillshade-shadow-color':
+                style==='dark'
+                  ? '#101713'
+                  : '#87918A',
+
+              'hillshade-highlight-color':
+                style==='dark'
+                  ? '#526058'
+                  : '#FFFFFF',
+
+              'hillshade-accent-color':
+                style==='dark'
+                  ? '#28342D'
+                  : '#B8C0BA'
+
+            }
+
+          });
+
+
+          map.setTerrain({
+
+            source:'terrain',
+
+            exaggeration:1.5
+
+          });
+
+
+          map.addSource(
+            'route',
+            {
+              type:'geojson',
+              data:{
+                type:'Feature',
+                geometry:{
+                  type:'LineString',
+                  coordinates:[]
+                }
+              }
+            }
+          );
+
+
+          map.addLayer({
+
+            id:
+              'route-line',
+
+            type:
+              'line',
+
+            source:
+              'route',
+
+            layout:{
+              'line-join':'round',
+              'line-cap':'round'
+            },
+
+            paint:{
+              'line-color':
+                css('--acc'),
+
+              'line-width':6
+
+            }
+
+          });
+
+
+          mapLoaded=true;
+
+
+          if(
+            cur &&
+            tab==='3d'
+          ){
+
+            updateMap(1);
+
+          }
+
+        }catch(e){
+
+          mapFailed=true;
+
+          msg(
+            '3D terrain is unavailable. 2D routes still work.'
+          );
+
+        }
+
+      }
+    );
+
+
+    map.on(
+      'error',
+      e => {
+
+        if(
+          tab==='3d' &&
+          e &&
+          e.error
+        ){
+
+          msg(
+            '3D terrain is unavailable. 2D routes still work.'
+          );
+
+        }
+
+      }
+    );
+
+
+  }catch(e){
+
+    mapFailed=true;
+
+    msg(
+      '3D map is unavailable. 2D routes still work.'
+    );
+
+  }
+
 }
+
 
 function updateMap(prog){
- if(!map||!mapLoaded||!cur)return;
- const p=cur.pts,n=p.length,e=prog*(n-1),i=Math.min(n-1,Math.floor(e));let tip=[p[i][1],p[i][0]],a=p[i],b=p[Math.min(n-1,i+1)];
- if(i<n-1){const f=e-i;tip=[a[1]+(b[1]-a[1])*f,a[0]+(b[0]-a[0])*f]}
- const p1=p[Math.max(0,i-3)],p2=p[Math.min(n-1,i+3)],dLon=(p2[1]-p1[1])*R,lat1=p1[0]*R,lat2=p2[0]*R;
- const yy=Math.sin(dLon)*Math.cos(lat2),xx=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dLon),bearing=Math.atan2(yy,xx)/R;
- const coords=p.slice(0,i+1).map(q=>[q[1],q[0]]);if(i<n-1)coords.push(tip);
- const src=map.getSource('route');if(src)src.setData({type:'Feature',geometry:{type:'LineString',coordinates:coords}});
- map.jumpTo({center:tip,bearing:smoothBearing(bearing),pitch:65,zoom:13.5});
- if(map.getLayer('route-line'))map.setPaintProperty('route-line','line-color',css('--acc'));
+
+  if(
+    !map ||
+    !mapLoaded ||
+    !cur
+  ) return;
+
+
+  const p=cur.pts;
+
+  const n=p.length;
+
+  const e=
+    prog*(n-1);
+
+  const i=
+    Math.min(
+      n-1,
+      Math.floor(e)
+    );
+
+
+  let tip=[
+    p[i][1],
+    p[i][0]
+  ];
+
+
+  if(i<n-1){
+
+    const a=p[i];
+
+    const b=p[i+1];
+
+    const f=e-i;
+
+    tip=[
+
+      a[1]+
+      (b[1]-a[1])*f,
+
+      a[0]+
+      (b[0]-a[0])*f
+
+    ];
+
+  }
+
+
+  const p1 =
+    p[
+      Math.max(
+        0,
+        i-3
+      )
+    ];
+
+  const p2 =
+    p[
+      Math.min(
+        n-1,
+        i+3
+      )
+    ];
+
+
+  const dLon =
+    (p2[1]-p1[1])*R;
+
+  const lat1 =
+    p1[0]*R;
+
+  const lat2 =
+    p2[0]*R;
+
+
+  const yy =
+    Math.sin(dLon) *
+    Math.cos(lat2);
+
+  const xx =
+    Math.cos(lat1) *
+    Math.sin(lat2)
+    -
+    Math.sin(lat1) *
+    Math.cos(lat2) *
+    Math.cos(dLon);
+
+
+  const bearing =
+    Math.atan2(
+      yy,
+      xx
+    ) / R;
+
+
+  const coords =
+    p
+      .slice(
+        0,
+        i+1
+      )
+      .map(q=>[
+        q[1],
+        q[0]
+      ]);
+
+
+  if(i<n-1)
+    coords.push(tip);
+
+
+  const source =
+    map.getSource('route');
+
+
+  if(source){
+
+    source.setData({
+
+      type:'Feature',
+
+      geometry:{
+        type:'LineString',
+        coordinates:coords
+      }
+
+    });
+
+  }
+
+
+  map.jumpTo({
+
+    center:tip,
+
+    bearing:
+      smoothBearing(
+        bearing
+      ),
+
+    pitch:65,
+
+    zoom:13.5
+
+  });
+
+
+  if(
+    map.getLayer(
+      'route-line'
+    )
+  ){
+
+    map.setPaintProperty(
+      'route-line',
+      'line-color',
+      css('--acc')
+    );
+
+  }
+
 }
+
+
+/* ============================================================
+   UI DRAW
+   ============================================================ */
 
 function draw(){
- cancelAnimationFrame(raf);playing=false;
- const is3d=tab==='3d',vid=tab==='vid'||is3d,W=vid?720:1080,H=vid?900:1350;
- if(cv.width!==W){cv.width=W;cv.height=H}
- if(vid&&style==='clear')style='dark';
- if(is3d){
-  $('#map-container').style.display='block';initMap();
-  if(mapLoaded){const target=style==='dark'||style==='clear'?STYLE_DARK:STYLE_LIGHT;if(currentMapStyle!==target){currentMapStyle=target;map.setStyle(target)}else updateMap(1)}
- }else $('#map-container').style.display='none';
- render(cx,W,H,cur,vst(),1,is3d);
- $('#stage').classList.toggle('clear',style==='clear');
- document.querySelectorAll('#styles button').forEach(b=>{b.setAttribute('aria-pressed',b.dataset.st===style);b.disabled=b.dataset.st==='clear'&&vid});
- document.querySelectorAll('.tabs button').forEach(b=>{const on=b.dataset.tab===tab;b.classList.toggle('on',on);b.setAttribute('aria-selected',on)});
- $('#play').hidden=tab==='img';$('#play').textContent='Play';
- $('#save_png').textContent=is3d?'Save 3D PNG':'Save PNG';
- $('#save_vid').textContent=is3d?'Save 3D video':'Save video';
- $('#save_vid').disabled=tab==='img'||busy;
- $('#save_png').disabled=busy;
- $('#finish').hidden=liveState!=='recording'&&liveState!=='paused';
- $('#pause').hidden=liveState!=='recording';
- $('#start').textContent=liveState==='recording'?'Recording…':liveState==='paused'?'Resume ride':'Start ride';
- $('#start').disabled=liveState==='recording';
- $('#livebar').hidden=liveState==='idle';
- $('#stats').replaceChildren(...statsFor(cur).map(([v,l])=>{const e=document.createElement('div'),b=document.createElement('b'),s=document.createElement('span');b.textContent=v;s.textContent=l;e.append(b,s);return e}));
- updateLiveBar();
+
+  cancelAnimationFrame(raf);
+
+  playing=false;
+
+
+  if(!cur)
+    return;
+
+
+  const is3d =
+    tab==='3d';
+
+  const isVideo =
+    tab==='vid' ||
+    is3d;
+
+
+  const W =
+    isVideo
+      ? 720
+      : 1080;
+
+  const H =
+    isVideo
+      ? 900
+      : 1350;
+
+
+  if(
+    cv.width!==W ||
+    cv.height!==H
+  ){
+
+    cv.width=W;
+
+    cv.height=H;
+
+  }
+
+
+  if(
+    isVideo &&
+    style==='clear'
+  ){
+
+    style='dark';
+
+  }
+
+
+  if(is3d){
+
+    $('#map-container')
+      .style.display='block';
+
+    initMap();
+
+
+    if(mapLoaded){
+
+      const target =
+        style==='dark' ||
+        style==='clear'
+          ? STYLE_DARK
+          : STYLE_LIGHT;
+
+
+      if(
+        currentMapStyle!==target
+      ){
+
+        currentMapStyle=target;
+
+        map.setStyle(target);
+
+      }else{
+
+        updateMap(1);
+
+      }
+
+    }
+
+  }else{
+
+    $('#map-container')
+      .style.display='none';
+
+  }
+
+
+  render(
+    cx,
+    W,
+    H,
+    cur,
+    vst(),
+    1,
+    is3d
+  );
+
+
+  $('#stage')
+    .classList.toggle(
+      'clear',
+      style==='clear'
+    );
+
+
+  document
+    .querySelectorAll(
+      '#styles button'
+    )
+    .forEach(b=>{
+
+      b.setAttribute(
+        'aria-pressed',
+        b.dataset.st===style
+      );
+
+      b.disabled =
+        b.dataset.st==='clear' &&
+        isVideo;
+
+    });
+
+
+  document
+    .querySelectorAll(
+      '.tabs button'
+    )
+    .forEach(b=>{
+
+      const on =
+        b.dataset.tab===tab;
+
+      b.classList.toggle(
+        'on',
+        on
+      );
+
+      b.setAttribute(
+        'aria-selected',
+        on
+      );
+
+    });
+
+
+  $('#play').hidden =
+    tab==='img';
+
+  $('#play').textContent =
+    'Play';
+
+
+  $('#save_png').textContent =
+    is3d
+      ? 'Save 3D PNG'
+      : 'Save PNG';
+
+
+  $('#save_vid').textContent =
+    is3d
+      ? 'Save 3D video'
+      : 'Save video';
+
+
+  $('#save_vid').disabled =
+    tab==='img' ||
+    busy;
+
+
+  $('#save_png').disabled =
+    busy;
+
+
+  $('#finish').hidden =
+    !(
+      liveState==='recording' ||
+      liveState==='paused'
+    );
+
+
+  $('#pause').hidden =
+    liveState!=='recording';
+
+
+  $('#start').textContent =
+    liveState==='recording'
+      ? 'Recording…'
+      : liveState==='paused'
+        ? 'Resume ride'
+        : 'Start ride';
+
+
+  $('#start').disabled =
+    liveState==='recording';
+
+
+  $('#livebar').hidden =
+    liveState==='idle';
+
+
+  const d =
+    derive(cur);
+
+  const km =
+    d.cum[d.cum.length-1]/1000;
+
+
+  const stats=[
+    [
+      km.toFixed(1)+' km',
+      'Distance'
+    ]
+  ];
+
+
+  if(d.hasT){
+
+    stats.push([
+      fmtT(
+        d.ct[d.ct.length-1]
+      ).join(' '),
+      'Moving time'
+    ]);
+
+    const tm =
+      d.ct[d.ct.length-1];
+
+    stats.push([
+      tm
+        ? (
+          km/
+          (tm/3600)
+        ).toFixed(1)+' km/h'
+        : '0.0 km/h',
+      'Average speed'
+    ]);
+
+  }else{
+
+    stats.push([
+      '—',
+      'Moving time'
+    ]);
+
+    stats.push([
+      '—',
+      'Average speed'
+    ]);
+
+  }
+
+
+  stats.push([
+    d.hasE
+      ? Math.round(
+          d.cg[d.cg.length-1]
+        )+' m'
+      : '—',
+    'Elevation gain'
+  ]);
+
+
+  $('#stats')
+    .replaceChildren(
+      ...stats.map(
+        ([v,l])=>{
+
+          const e=
+            document.createElement(
+              'div'
+            );
+
+          const b=
+            document.createElement(
+              'b'
+            );
+
+          const s=
+            document.createElement(
+              'span'
+            );
+
+          b.textContent=v;
+
+          s.textContent=l;
+
+          e.append(
+            b,
+            s
+          );
+
+          return e;
+
+        }
+      )
+    );
+
+
+  updateLiveBar();
+
 }
 
-function statsFor(r){
- const d=derive(r),km=d.cum.at(-1)/1000,it=[[km.toFixed(1)+' km','Distance']];
- if(d.hasT){const tm=d.ct.at(-1);it.push([fmtT(tm).join(' '),'Moving time']);it.push([tm? (km/(tm/3600)).toFixed(1)+' km/h':'0.0 km/h','Average speed'])}
- else it.push(['—','Moving time']);
- it.push([d.hasE?Math.round(d.cg.at(-1))+' m':'—','Elevation gain']);return it;
+
+/* ============================================================
+   LIVE GPS
+   ============================================================ */
+
+function hav(a,b){
+
+  return Math.hypot(
+
+    (b[1]-a[1])*
+    R*
+    Math.cos(
+      (a[0]+b[0])/2*R
+    ),
+
+    (b[0]-a[0])*R
+
+  ) * 6371000;
+
 }
-function updateLiveBar(){
- if(!cur)return;
- const d=derive(cur),dist=d.cum.at(-1)/1000;
- $('#liveDistance').textContent=dist.toFixed(2);
- const sec=liveElapsed();$('#liveTime').textContent=fmtClock(sec);
- const sp=lastPoint?.[4]||0;$('#liveSpeed').textContent=(sp*3.6).toFixed(1);
- $('#liveStatus').textContent=liveState==='recording'?'Recording':liveState==='paused'?'Paused':'Ready';
-}
-const fmtClock=s=>{s=Math.round(s);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+
+
 function liveElapsed(){
- if(!liveStart)return 0;
- const now=liveState==='paused'?pausedAt:Date.now();
- return Math.max(0,(now-liveStart-totalPaused)/1000);
+
+  if(!liveStart)
+    return 0;
+
+  const now =
+    liveState==='paused'
+      ? pausedAt
+      : Date.now();
+
+  return Math.max(
+    0,
+    (
+      now-
+      liveStart-
+      totalPaused
+    )/1000
+  );
+
 }
-function hav(a,b){return Math.hypot((b[1]-a[1])*R*Math.cos((a[0]+b[0])/2*R),(b[0]-a[0])*R)*6371000}
+
+
+function updateLiveBar(){
+
+  if(!cur)
+    return;
+
+
+  const d =
+    derive(cur);
+
+
+  const dist =
+    d.cum[d.cum.length-1]/1000;
+
+
+  $('#liveDistance')
+    .textContent =
+    dist.toFixed(2);
+
+
+  $('#liveTime')
+    .textContent =
+    fmtClock(
+      liveElapsed()
+    );
+
+
+  const speed =
+    lastPoint &&
+    Number.isFinite(
+      lastPoint[4]
+    )
+      ? lastPoint[4]
+      : 0;
+
+
+  $('#liveSpeed')
+    .textContent =
+    (
+      speed*3.6
+    ).toFixed(1);
+
+
+  $('#liveStatus')
+    .textContent =
+    liveState==='recording'
+      ? 'Recording'
+      : liveState==='paused'
+        ? 'Paused'
+        : 'Ready';
+
+}
+
 
 function startRide(){
- if(!navigator.geolocation){msg('GPS is not available in this browser.');return}
- if(liveState==='paused'){resumeRide();return}
- livePts=[];lastPoint=null;liveStart=Date.now();pausedAt=0;totalPaused=0;liveState='recording';
- const id='live-'+Date.now();
- cur={id,name:'Ride '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),date:new Date().toISOString(),pts:livePts};
- if(!rides.some(r=>r.id===id))rides.push(cur);
- msg('Waiting for GPS…');
- watchId=navigator.geolocation.watchPosition(onGPS,onGPSError,{enableHighAccuracy:true,maximumAge:2000,timeout:15000});
- show();draw();
+
+  if(
+    !navigator.geolocation
+  ){
+
+    msg(
+      'GPS is not available in this browser.'
+    );
+
+    return;
+
+  }
+
+
+  if(
+    liveState==='paused'
+  ){
+
+    resumeRide();
+
+    return;
+
+  }
+
+
+  livePts=[];
+
+  lastPoint=null;
+
+  liveStart=
+    Date.now();
+
+  pausedAt=0;
+
+  totalPaused=0;
+
+  liveState='recording';
+
+
+  cur={
+
+    id:
+      'live-'+Date.now(),
+
+    name:
+      'Current ride',
+
+    date:
+      new Date().toISOString(),
+
+    pts:
+      livePts
+
+  };
+
+
+  rides.push(cur);
+
+  persist();
+
+  msg(
+    'Waiting for GPS…'
+  );
+
+
+  watchId =
+    navigator.geolocation.watchPosition(
+      onGPS,
+      onGPSError,
+      {
+        enableHighAccuracy:true,
+        maximumAge:2000,
+        timeout:15000
+      }
+    );
+
+
+  show();
+
 }
+
+
 function onGPS(pos){
- if(liveState!=='recording')return;
- const c=pos.coords,lat=+c.latitude.toFixed(5),lon=+c.longitude.toFixed(5),ele=Number.isFinite(c.altitude)?+c.altitude.toFixed(1):null,tm=Math.round(pos.timestamp/1000),speed=Number.isFinite(c.speed)&&c.speed>=0?c.speed:0;
- const q=[lat,lon,ele,tm,speed];
- if(lastPoint){
-  const dist=hav(lastPoint,q),dt=tm-lastPoint[3];
-  if(dist<2&&dt<5)return;
-  if(dist>200&&dt<10)return;
- }
- livePts.push(q);lastPoint=q;cur._d=null;persist();msg('');
- updateLiveBar();drawLiveMap();
+
+  if(
+    liveState!=='recording'
+  )
+    return;
+
+
+  const c =
+    pos.coords;
+
+
+  const lat =
+    +c.latitude.toFixed(5);
+
+  const lon =
+    +c.longitude.toFixed(5);
+
+
+  const ele =
+    Number.isFinite(
+      c.altitude
+    )
+      ? +c.altitude.toFixed(1)
+      : null;
+
+
+  const tm =
+    Math.round(
+      pos.timestamp/1000
+    );
+
+
+  const speed =
+    Number.isFinite(c.speed) &&
+    c.speed>=0
+      ? c.speed
+      : 0;
+
+
+  const accuracy =
+    Number.isFinite(
+      c.accuracy
+    )
+      ? c.accuracy
+      : 999;
+
+
+  /*
+    Ignore extremely inaccurate
+    GPS fixes.
+  */
+
+  if(
+    accuracy>100 &&
+    livePts.length>0
+  ){
+
+    msg(
+      'GPS signal is weak…'
+    );
+
+    return;
+
+  }
+
+
+  const q=[
+    lat,
+    lon,
+    ele,
+    tm,
+    speed
+  ];
+
+
+  if(lastPoint){
+
+    const dist =
+      hav(
+        lastPoint,
+        q
+      );
+
+    const dt =
+      tm-lastPoint[3];
+
+
+    if(
+      dist<2 &&
+      dt<5
+    )
+      return;
+
+
+    /*
+      Reject impossible jumps.
+    */
+
+    if(
+      dist>200 &&
+      dt<10
+    )
+      return;
+
+  }
+
+
+  livePts.push(q);
+
+  lastPoint=q;
+
+  cur._d=null;
+
+  persist();
+
+  msg('');
+
+  updateLiveBar();
+
+  drawLiveMap();
+
 }
-function onGPSError(e){msg(e.code===1?'Location permission was denied. Enable Location for Safari.':'Waiting for a usable GPS signal…')}
+
+
+function onGPSError(e){
+
+  if(e.code===1){
+
+    msg(
+      'Location permission was denied. Enable Location for Safari.'
+    );
+
+  }else{
+
+    msg(
+      'Waiting for a usable GPS signal…'
+    );
+
+  }
+
+}
+
+
 function pauseRide(){
- if(liveState!=='recording')return;
- liveState='paused';pausedAt=Date.now();if(watchId!=null)navigator.geolocation.clearWatch(watchId);watchId=null;draw();
+
+  if(
+    liveState!=='recording'
+  )
+    return;
+
+
+  liveState='paused';
+
+  pausedAt=
+    Date.now();
+
+
+  if(
+    watchId!==null
+  ){
+
+    navigator.geolocation
+      .clearWatch(
+        watchId
+      );
+
+    watchId=null;
+
+  }
+
+
+  draw();
+
 }
+
+
 function resumeRide(){
- if(liveState!=='paused')return;
- totalPaused+=Date.now()-pausedAt;pausedAt=0;liveState='recording';
- watchId=navigator.geolocation.watchPosition(onGPS,onGPSError,{enableHighAccuracy:true,maximumAge:2000,timeout:15000});draw();
+
+  if(
+    liveState!=='paused'
+  )
+    return;
+
+
+  totalPaused +=
+    Date.now()-
+    pausedAt;
+
+
+  pausedAt=0;
+
+  liveState='recording';
+
+
+  watchId =
+    navigator.geolocation.watchPosition(
+      onGPS,
+      onGPSError,
+      {
+        enableHighAccuracy:true,
+        maximumAge:2000,
+        timeout:15000
+      }
+    );
+
+
+  draw();
+
 }
+
+
 async function finishRide(){
- if(liveState==='idle')return;
- if(watchId!=null)navigator.geolocation.clearWatch(watchId);watchId=null;
- liveState='idle';cur._d=null;
- if(cur.pts.length<2){rides=rides.filter(r=>r!==cur);cur=null;persist();show();msg('Not enough GPS points to save this ride.');return}
- cur.name='Ride '+new Date(cur.date).toLocaleDateString(undefined,{day:'numeric',month:'short'})+' · '+(derive(cur).cum.at(-1)/1000).toFixed(1)+' km';
- cur.date=new Date(liveStart).toISOString();persist();list();draw();
- msg('Ride saved. Creating the 3D flyover…');
- tab='3d';draw();
- await create3DPreview();
+
+  if(
+    liveState==='idle'
+  )
+    return;
+
+
+  if(
+    watchId!==null
+  ){
+
+    navigator.geolocation
+      .clearWatch(
+        watchId
+      );
+
+    watchId=null;
+
+  }
+
+
+  liveState='idle';
+
+  cur._d=null;
+
+
+  if(
+    cur.pts.length<2
+  ){
+
+    rides =
+      rides.filter(
+        r=>r!==cur
+      );
+
+    cur=null;
+
+    persist();
+
+    show();
+
+    msg(
+      'Not enough GPS points to save this ride.'
+    );
+
+    return;
+
+  }
+
+
+  const distance =
+    (
+      derive(cur)
+        .cum
+        .at(-1)/1000
+    ).toFixed(1);
+
+
+  cur.name =
+    'Ride · '+
+    new Date(
+      cur.date
+    ).toLocaleDateString(
+      undefined,
+      {
+        day:'numeric',
+        month:'short'
+      }
+    )+
+    ' · '+
+    distance+
+    ' km';
+
+
+  persist();
+
+  list();
+
+  draw();
+
+
+  msg(
+    'Ride saved. Creating the 3D flyover…'
+  );
+
+
+  tab='3d';
+
+  draw();
+
+
+  await create3DPreview();
+
 }
+
+
+/* ============================================================
+   LIVE MAP / CANVAS UPDATE
+   ============================================================ */
 
 function drawLiveMap(){
- if(!cur)return;
- if(tab==='3d'){initMap();if(mapLoaded){cameraBearing=null;updateMap(1)}}
- else if(tab==='img')render(cx,1080,1350,cur,style,1,false);
- else render(cx,720,900,cur,vst(),1,false);
- $('#stats').replaceChildren(...statsFor(cur).map(([v,l])=>{const e=document.createElement('div'),b=document.createElement('b'),s=document.createElement('span');b.textContent=v;s.textContent=l;e.append(b,s);return e}));
- updateLiveBar();list();
+
+  if(!cur)
+    return;
+
+
+  if(
+    tab==='3d'
+  ){
+
+    initMap();
+
+    if(mapLoaded){
+
+      cameraBearing=null;
+
+      updateMap(1);
+
+    }
+
+  }else{
+
+    render(
+      cx,
+      cv.width,
+      cv.height,
+      cur,
+      vst(),
+      1,
+      false
+    );
+
+  }
+
+
+  const d =
+    derive(cur);
+
+  const km =
+    d.cum.at(-1)/1000;
+
+
+  $('#stats')
+    .replaceChildren(
+      ...[
+        [
+          km.toFixed(1)+' km',
+          'Distance'
+        ],
+        [
+          fmtT(
+            d.ct.at(-1)
+          ).join(' '),
+          'Moving time'
+        ],
+        [
+          lastPoint
+            ? (
+              lastPoint[4]*3.6
+            ).toFixed(1)+' km/h'
+            : '0.0 km/h',
+          'Current speed'
+        ],
+        [
+          d.hasE
+            ? Math.round(
+                d.cg.at(-1)
+              )+' m'
+            : '—',
+          'Elevation gain'
+        ]
+      ].map(
+        ([v,l])=>{
+
+          const e=
+            document.createElement(
+              'div'
+            );
+
+          const b=
+            document.createElement(
+              'b'
+            );
+
+          const s=
+            document.createElement(
+              'span'
+            );
+
+          b.textContent=v;
+
+          s.textContent=l;
+
+          e.append(
+            b,
+            s
+          );
+
+          return e;
+
+        }
+      )
+    );
+
+
+  updateLiveBar();
+
+  list();
+
 }
+
+
+/* ============================================================
+   3D VIDEO PREVIEW
+   ============================================================ */
 
 async function create3DPreview(){
- if(!cur||!mapLoaded||mapFailed){msg('3D terrain is unavailable. The ride is saved and the 2D views still work.');return}
- busy=true;draw();tab='3d';draw();cameraBearing=null;
- const out=document.createElement('canvas');out.width=720;out.height=900;const ox=out.getContext('2d');
- const overlay=document.createElement('canvas');overlay.width=720;overlay.height=900;const ov=overlay.getContext('2d');
- const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m));
- if(!mime){busy=false;msg('3D preview video is not supported here. The ride is saved.');draw();return}
- const chunks=[],mr=new MediaRecorder(out.captureStream(30),{mimeType:mime,videoBitsPerSecond:5000000});
- mr.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
- const stopped=new Promise(r=>mr.onstop=r);mr.start();
- const t0=performance.now();
- await new Promise(resolve=>{
-  const loop=now=>{const ms=now-t0,p=frame(ms);updateMap(p);ox.clearRect(0,0,720,900);ox.drawImage(map.getCanvas(),0,0,720,900);render(ov,720,900,cur,'dark',p,true);ox.drawImage(overlay,0,0);if(ms<DUR)requestAnimationFrame(loop);else resolve()};requestAnimationFrame(loop);
- });
- mr.stop();await stopped;
- const blob=new Blob(chunks,{type:mime.split(';')[0]});
- if(lastPreviewURL)URL.revokeObjectURL(lastPreviewURL);lastPreviewURL=URL.createObjectURL(blob);
- $('#previewVideo').src=lastPreviewURL;$('#preview').hidden=false;
- cur.video={name:slug(cur.name)+'-3d-velo.'+(mime.startsWith('video/mp4')?'mp4':'webm'),blobURL:lastPreviewURL,type:mime.split(';')[0]};
- persist();busy=false;draw();msg('3D flyover ready.');
+
+  if(
+    !cur ||
+    !mapLoaded ||
+    mapFailed
+  ){
+
+    msg(
+      '3D terrain is unavailable. The ride is saved and the 2D views still work.'
+    );
+
+    return;
+
+  }
+
+
+  const mime =
+    [
+      'video/mp4;codecs=avc1',
+      'video/webm;codecs=vp9',
+      'video/webm'
+    ].find(
+      m =>
+        window.MediaRecorder &&
+        MediaRecorder.isTypeSupported(m)
+    );
+
+
+  if(!mime){
+
+    msg(
+      '3D video is not supported here. The ride is saved.'
+    );
+
+    return;
+
+  }
+
+
+  busy=true;
+
+  draw();
+
+
+  const out =
+    document.createElement(
+      'canvas'
+    );
+
+  out.width=720;
+
+  out.height=900;
+
+
+  const outCtx =
+    out.getContext('2d');
+
+
+  const overlay =
+    document.createElement(
+      'canvas'
+    );
+
+  overlay.width=720;
+
+  overlay.height=900;
+
+
+  const overlayCtx =
+    overlay.getContext('2d');
+
+
+  const chunks=[];
+
+
+  const recorder =
+    new MediaRecorder(
+      out.captureStream(30),
+      {
+        mimeType:mime,
+        videoBitsPerSecond:5000000
+      }
+    );
+
+
+  recorder.ondataavailable =
+    e => {
+
+      if(e.data.size)
+        chunks.push(e.data);
+
+    };
+
+
+  const stopped =
+    new Promise(
+      resolve =>
+        recorder.onstop=resolve
+    );
+
+
+  recorder.start();
+
+
+  cameraBearing=null;
+
+
+  const t0 =
+    performance.now();
+
+
+  await new Promise(
+    resolve => {
+
+      const loop =
+        now => {
+
+          const elapsed =
+            now-t0;
+
+          const p =
+            frame(elapsed);
+
+
+          updateMap(p);
+
+
+          outCtx.clearRect(
+            0,
+            0,
+            720,
+            900
+          );
+
+
+          outCtx.drawImage(
+            map.getCanvas(),
+            0,
+            0,
+            720,
+            900
+          );
+
+
+          render(
+            overlayCtx,
+            720,
+            900,
+            cur,
+            'dark',
+            p,
+            true
+          );
+
+
+          outCtx.drawImage(
+            overlay,
+            0,
+            0
+          );
+
+
+          if(
+            elapsed<DUR
+          ){
+
+            requestAnimationFrame(
+              loop
+            );
+
+          }else{
+
+            resolve();
+
+          }
+
+        };
+
+
+      requestAnimationFrame(
+        loop
+      );
+
+    }
+  );
+
+
+  recorder.stop();
+
+  await stopped;
+
+
+  const blob =
+    new Blob(
+      chunks,
+      {
+        type:
+          mime.split(';')[0]
+      }
+    );
+
+
+  if(lastPreviewURL){
+
+    URL.revokeObjectURL(
+      lastPreviewURL
+    );
+
+  }
+
+
+  lastPreviewURL =
+    URL.createObjectURL(
+      blob
+    );
+
+
+  $('#previewVideo').src =
+    lastPreviewURL;
+
+
+  $('#preview').hidden=false;
+
+
+  busy=false;
+
+  draw();
+
+
+  msg(
+    '3D flyover ready.'
+  );
+
 }
 
-async function offer(name,blob){
- const file=new File([blob],name,{type:blob.type});
- try{
-  if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){await navigator.share({files:[file]});msg('Shared.');return}
- }catch(e){if(e.name==='AbortError'){msg('Share cancelled.');return}}
- const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);msg('Saved.');
+
+/* ============================================================
+   SAVING
+   ============================================================ */
+
+async function offer(
+  name,
+  blob
+){
+
+  const file =
+    new File(
+      [blob],
+      name,
+      {
+        type:blob.type
+      }
+    );
+
+
+  try{
+
+    if(
+      navigator.share &&
+      (
+        !navigator.canShare ||
+        navigator.canShare({
+          files:[file]
+        })
+      )
+    ){
+
+      await navigator.share({
+        files:[file]
+      });
+
+      msg('Shared.');
+
+      return;
+
+    }
+
+  }catch(e){
+
+    if(
+      e.name==='AbortError'
+    ){
+
+      msg(
+        'Share cancelled.'
+      );
+
+      return;
+
+    }
+
+  }
+
+
+  const url =
+    URL.createObjectURL(
+      blob
+    );
+
+
+  const a =
+    document.createElement(
+      'a'
+    );
+
+  a.href=url;
+
+  a.download=name;
+
+  document.body.appendChild(a);
+
+  a.click();
+
+  a.remove();
+
+
+  setTimeout(
+    () =>
+      URL.revokeObjectURL(
+        url
+      ),
+    1500
+  );
+
+
+  msg('Saved.');
+
 }
+
+
+function slug(s){
+
+  return s
+    .toLowerCase()
+    .replace(
+      /[^a-z0-9]+/g,
+      '-'
+    )
+    .replace(
+      /^-|-$/g,
+      ''
+    ) ||
+    'ride';
+
+}
+
+
 async function savePNG(){
- const is3d=tab==='3d',c=document.createElement('canvas');c.width=1080;c.height=1350;const x=c.getContext('2d');
- if(is3d&&mapLoaded){updateMap(1);await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));x.drawImage(map.getCanvas(),0,0,1080,1350);const o=document.createElement('canvas');o.width=1080;o.height=1350;render(o.getContext('2d'),1080,1350,cur,'dark',1,true);x.drawImage(o,0,0)}
- else render(x,1080,1350,cur,style,1,false);
- const blob=await new Promise(r=>c.toBlob(r,'image/png'));await offer(slug(cur.name)+(is3d?'-3d-velo.png':'-velo.png'),blob);
+
+  if(!cur)
+    return;
+
+
+  const is3d =
+    tab==='3d';
+
+
+  const c =
+    document.createElement(
+      'canvas'
+    );
+
+
+  c.width=1080;
+
+  c.height=1350;
+
+
+  const x =
+    c.getContext('2d');
+
+
+  if(
+    is3d &&
+    mapLoaded
+  ){
+
+    updateMap(1);
+
+
+    await new Promise(
+      resolve =>
+        requestAnimationFrame(
+          () =>
+            requestAnimationFrame(
+              resolve
+            )
+        )
+    );
+
+
+    x.drawImage(
+      map.getCanvas(),
+      0,
+      0,
+      1080,
+      1350
+    );
+
+
+    const overlay =
+      document.createElement(
+        'canvas'
+      );
+
+
+    overlay.width=1080;
+
+    overlay.height=1350;
+
+
+    render(
+      overlay.getContext('2d'),
+      1080,
+      1350,
+      cur,
+      'dark',
+      1,
+      true
+    );
+
+
+    x.drawImage(
+      overlay,
+      0,
+      0
+    );
+
+  }else{
+
+    render(
+      x,
+      1080,
+      1350,
+      cur,
+      style,
+      1,
+      false
+    );
+
+  }
+
+
+  const blob =
+    await new Promise(
+      resolve =>
+        c.toBlob(
+          resolve,
+          'image/png'
+        )
+    );
+
+
+  await offer(
+    slug(cur.name)+
+    (
+      is3d
+        ? '-3d-velo.png'
+        : '-velo.png'
+    ),
+    blob
+  );
+
 }
+
+
 async function saveVideo(){
- if(tab==='img'){msg('Open Flyover video or 3D flyover to save a video.');return}
- if(tab==='3d'&&!mapLoaded){msg('3D terrain is unavailable.');return}
- const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m));if(!mime){msg('This browser cannot record video.');return}
- const is3d=tab==='3d',c=document.createElement('canvas');c.width=720;c.height=900;const x=c.getContext('2d'),chunks=[],mr=new MediaRecorder(c.captureStream(30),{mimeType:mime,videoBitsPerSecond:5000000});
- const overlay=document.createElement('canvas');overlay.width=720;overlay.height=900;const ov=overlay.getContext('2d');mr.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
- const stopped=new Promise(r=>mr.onstop=r);mr.start();const t0=performance.now();
- await new Promise(resolve=>{const loop=now=>{const ms=now-t0,p=frame(ms);if(is3d){updateMap(p);x.clearRect(0,0,720,900);x.drawImage(map.getCanvas(),0,0,720,900);render(ov,720,900,cur,'dark',p,true);x.drawImage(overlay,0,0)}else render(x,720,900,cur,style,p,false);if(ms<DUR)requestAnimationFrame(loop);else resolve()};requestAnimationFrame(loop)});
- mr.stop();await stopped;await offer(slug(cur.name)+(is3d?'-3d-velo.':'-velo.')+(mime.startsWith('video/mp4')?'mp4':'webm'),new Blob(chunks,{type:mime.split(';')[0]}));
+
+  if(
+    tab==='img'
+  ){
+
+    msg(
+      'Open Flyover video or 3D flyover to save a video.'
+    );
+
+    return;
+
+  }
+
+
+  if(
+    tab==='3d' &&
+    !mapLoaded
+  ){
+
+    msg(
+      '3D terrain is unavailable.'
+    );
+
+    return;
+
+  }
+
+
+  const mime =
+    [
+      'video/mp4;codecs=avc1',
+      'video/webm;codecs=vp9',
+      'video/webm'
+    ].find(
+      m =>
+        window.MediaRecorder &&
+        MediaRecorder.isTypeSupported(m)
+    );
+
+
+  if(!mime){
+
+    msg(
+      'This browser cannot record video.'
+    );
+
+    return;
+
+  }
+
+
+  const is3d =
+    tab==='3d';
+
+
+  const c =
+    document.createElement(
+      'canvas'
+    );
+
+
+  c.width=720;
+
+  c.height=900;
+
+
+  const x =
+    c.getContext('2d');
+
+
+  const overlay =
+    document.createElement(
+      'canvas'
+    );
+
+
+  overlay.width=720;
+
+  overlay.height=900;
+
+
+  const overlayCtx =
+    overlay.getContext('2d');
+
+
+  const chunks=[];
+
+
+  const recorder =
+    new MediaRecorder(
+      c.captureStream(30),
+      {
+        mimeType:mime,
+        videoBitsPerSecond:5000000
+      }
+    );
+
+
+  recorder.ondataavailable =
+    e => {
+
+      if(e.data.size)
+        chunks.push(e.data);
+
+    };
+
+
+  const stopped =
+    new Promise(
+      resolve =>
+        recorder.onstop=resolve
+    );
+
+
+  recorder.start();
+
+
+  cameraBearing=null;
+
+
+  const t0 =
+    performance.now();
+
+
+  await new Promise(
+    resolve => {
+
+      const loop =
+        now => {
+
+          const elapsed =
+            now-t0;
+
+          const p =
+            frame(elapsed);
+
+
+          if(is3d){
+
+            updateMap(p);
+
+
+            x.clearRect(
+              0,
+              0,
+              720,
+              900
+            );
+
+
+            x.drawImage(
+              map.getCanvas(),
+              0,
+              0,
+              720,
+              900
+            );
+
+
+            render(
+              overlayCtx,
+              720,
+              900,
+              cur,
+              'dark',
+              p,
+              true
+            );
+
+
+            x.drawImage(
+              overlay,
+              0,
+              0
+            );
+
+          }else{
+
+            render(
+              x,
+              720,
+              900,
+              cur,
+              style,
+              p,
+              false
+            );
+
+          }
+
+
+          if(
+            elapsed<DUR
+          ){
+
+            requestAnimationFrame(
+              loop
+            );
+
+          }else{
+
+            resolve();
+
+          }
+
+        };
+
+
+      requestAnimationFrame(
+        loop
+      );
+
+    }
+  );
+
+
+  recorder.stop();
+
+  await stopped;
+
+
+  const blob =
+    new Blob(
+      chunks,
+      {
+        type:
+          mime.split(';')[0]
+      }
+    );
+
+
+  await offer(
+    slug(cur.name)+
+    (
+      is3d
+        ? '-3d-velo.'
+        : '-velo.'
+    )+
+    (
+      mime.startsWith(
+        'video/mp4'
+      )
+        ? 'mp4'
+        : 'webm'
+    ),
+    blob
+  );
+
 }
 
-function thumb(c,r){const x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);const xy=project(r.pts,{x:8,y:8,w:c.width-16,h:c.height-16});path(x,xy,xy.length-1);x.lineJoin=x.lineCap='round';x.lineWidth=5;x.strokeStyle=css('--acc');x.stroke()}
-function list(){
- const ul=$('#rides');ul.replaceChildren();
- [...rides].sort((a,b)=>b.date<a.date?-1:1).forEach(r=>{
-  const li=document.createElement('li');li.className='ride'+(cur&&cur.id===r.id?' sel':'');const o=document.createElement('button');o.className='open';
-  const c=document.createElement('canvas');c.width=108;c.height=136;thumb(c,r);const w=document.createElement('div'),n=document.createElement('div'),m=document.createElement('div');
-  n.className='nm';n.textContent=r.name;m.className='mt';m.textContent=(derive(r).cum.at(-1)/1000).toFixed(1)+' km, '+new Date(r.date).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});w.style.minWidth=0;w.append(n,m);o.append(c,w);o.onclick=()=>pick(r.id);
-  const x=document.createElement('button');x.className='del';x.textContent='Delete';x.onclick=()=>{rides=rides.filter(q=>q.id!==r.id);if(cur&&cur.id===r.id)cur=null;persist();show()};li.append(o,x);ul.append(li);
- });
-}
-function show(){if(cur){$('#empty').hidden=true;$('#view').hidden=false}else{$('#empty').hidden=rides.length>0?true:false;$('#view').hidden=true}$('#listwrap').hidden=!rides.length;if(cur)draw();list()}
-function pick(id){cur=rides.find(r=>r.id===id);msg('');show();window.scrollTo({top:0,behavior:'smooth'})}
-function add(r){rides.push(r);cur=r;persist();msg('');show()}
 
-function parseGPX(txt,fn){
- const doc=new DOMParser().parseFromString(txt,'application/xml');if(doc.querySelector('parsererror'))throw Error('That file isn’t valid GPX.');
- let els=[...doc.getElementsByTagName('trkpt')];if(!els.length)els=[...doc.getElementsByTagName('rtept')];if(els.length<2)throw Error('No route points found in this GPX file.');
- const g=(e,t)=>{const v=e.getElementsByTagName(t)[0];return v?v.textContent:null};
- let pts=els.map(e=>{const el=g(e,'ele'),tm=g(e,'time');return[+(+e.getAttribute('lat')).toFixed(5),+(+e.getAttribute('lon')).toFixed(5),el!=null?+el:null,tm?Date.parse(tm)/1000:null]}).filter(q=>isFinite(q[0])&&isFinite(q[1]));
- if(pts.length<2)throw Error('No route points found in this GPX file.');const step=Math.ceil(pts.length/1200);if(step>1){const k=pts.filter((_,i)=>i%step===0);if(k.at(-1)!==pts.at(-1))k.push(pts.at(-1));pts=k}
- const nm=doc.querySelector('trk > name, metadata > name'),t0=pts.find(q=>q[3]!=null&&isFinite(q[3]));return{id:String(Date.now()),name:(nm&&nm.textContent.trim())||fn.replace(/\.gpx$/i,''),date:t0?new Date(t0[3]*1000).toISOString():new Date().toISOString(),pts};
+/* ============================================================
+   GPX IMPORT
+   ============================================================ */
+
+function parseGPX(
+  txt,
+  fn
+){
+
+  const doc =
+    new DOMParser()
+      .parseFromString(
+        txt,
+        'application/xml'
+      );
+
+
+  if(
+    doc.querySelector(
+      'parsererror'
+    )
+  ){
+
+    throw new Error(
+      'That file isn’t valid GPX.'
+    );
+
+  }
+
+
+  let els =
+    [
+      ...doc.getElementsByTagName(
+        'trkpt'
+      )
+    ];
+
+
+  if(!els.length){
+
+    els =
+      [
+        ...doc.getElementsByTagName(
+          'rtept'
+        )
+      ];
+
+  }
+
+
+  if(
+    els.length<2
+  ){
+
+    throw new Error(
+      'No route points found in this GPX file.'
+    );
+
+  }
+
+
+  const get =
+    (e,t) => {
+
+      const v =
+        e.getElementsByTagName(
+          t
+        )[0];
+
+      return v
+        ? v.textContent
+        : null;
+
+    };
+
+
+  let pts =
+    els
+      .map(e=>{
+
+        const el =
+          get(e,'ele');
+
+        const tm =
+          get(e,'time');
+
+
+        return [
+
+          +(
+            +e.getAttribute(
+              'lat'
+            )
+          ).toFixed(5),
+
+          +(
+            +e.getAttribute(
+              'lon'
+            )
+          ).toFixed(5),
+
+          el!==null
+            ? +el
+            : null,
+
+          tm
+            ? Date.parse(tm)/1000
+            : null
+
+        ];
+
+      })
+      .filter(
+        q =>
+          Number.isFinite(q[0]) &&
+          Number.isFinite(q[1])
+      );
+
+
+  if(
+    pts.length<2
+  ){
+
+    throw new Error(
+      'No route points found in this GPX file.'
+    );
+
+  }
+
+
+  const step =
+    Math.ceil(
+      pts.length/1200
+    );
+
+
+  if(step>1){
+
+    const reduced =
+      pts.filter(
+        (_,i)=>
+          i%step===0
+      );
+
+
+    const last =
+      pts[pts.length-1];
+
+    const current =
+      reduced[
+        reduced.length-1
+      ];
+
+
+    if(
+      !current ||
+      current[0]!==last[0] ||
+      current[1]!==last[1]
+    ){
+
+      reduced.push(last);
+
+    }
+
+
+    pts=reduced;
+
+  }
+
+
+  const nm =
+    doc.querySelector(
+      'trk > name, metadata > name'
+    );
+
+
+  const t0 =
+    pts.find(
+      q =>
+        q[3]!==null &&
+        Number.isFinite(q[3])
+    );
+
+
+  return {
+
+    id:
+      String(Date.now()),
+
+    name:
+      (
+        nm &&
+        nm.textContent.trim()
+      ) ||
+      fn.replace(
+        /\.gpx$/i,
+        ''
+      ),
+
+    date:
+      t0
+        ? new Date(
+            t0[3]*1000
+          ).toISOString()
+        : new Date().toISOString(),
+
+    pts
+
+  };
+
 }
 
-$('#file').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{add(parseGPX(await f.text(),f.name))}catch(err){msg(err.message)}};
-$('#imp').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('#file').click()}};
-$('#start').onclick=startRide;$('#pause').onclick=pauseRide;$('#finish').onclick=finishRide;
+
+/* ============================================================
+   DEMO RIDE
+   ============================================================ */
+
 $('#demo').onclick=()=>{
- const pts=[];let t=Date.now()/1000-3*3600,n=360;
- for(let i=0;i<=n;i++){const a=i/n*Math.PI*2,r=1+.28*Math.sin(2*a+.6)+.16*Math.sin(3*a+2)+.07*Math.sin(7*a);pts.push([+(45.5+Math.sin(a)*r*.042).toFixed(5),+(-122.7+Math.cos(a)*r*.06).toFixed(5),+(70+48*Math.sin(2*a+1)+28*Math.sin(5*a)+12*Math.sin(11*a)).toFixed(1),Math.round(t),8+3*Math.sin(a)]);t+=14+3*Math.sin(3*a)}
- add({id:String(Date.now()),name:'Sunday loop',date:new Date(Date.now()-3*3600e3).toISOString(),pts});
+
+  const pts=[];
+
+  let t =
+    Date.now()/1000 -
+    3*3600;
+
+  const n=360;
+
+
+  for(
+    let i=0;
+    i<=n;
+    i++
+  ){
+
+    const a =
+      i/n*
+      Math.PI*2;
+
+
+    const rr =
+      1+
+      .28*Math.sin(
+        2*a+.6
+      )+
+      .16*Math.sin(
+        3*a+2
+      )+
+      .07*Math.sin(
+        7*a
+      );
+
+
+    pts.push([
+
+      +(
+        45.5+
+        Math.sin(a)*
+        rr*.042
+      ).toFixed(5),
+
+      +(
+        -122.7+
+        Math.cos(a)*
+        rr*.06
+      ).toFixed(5),
+
+      +(
+        70+
+        48*Math.sin(
+          2*a+1
+        )+
+        28*Math.sin(
+          5*a
+        )+
+        12*Math.sin(
+          11*a
+        )
+      ).toFixed(1),
+
+      Math.round(t),
+
+      8+
+      3*Math.sin(a)
+
+    ]);
+
+
+    t +=
+      14+
+      3*Math.sin(
+        3*a
+      );
+
+  }
+
+
+  add({
+
+    id:
+      String(Date.now()),
+
+    name:
+      'Sunday loop',
+
+    date:
+      new Date(
+        Date.now()-
+        3*3600e3
+      ).toISOString(),
+
+    pts
+
+  });
+
 };
 
-document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;msg('');draw()});
-document.querySelectorAll('#styles button').forEach(b=>b.onclick=()=>{style=b.dataset.st;draw()});
+
+/* ============================================================
+   UI / LIST
+   ============================================================ */
+
+function thumb(c,r){
+
+  const x =
+    c.getContext('2d');
+
+  x.clearRect(
+    0,
+    0,
+    c.width,
+    c.height
+  );
+
+
+  const xy =
+    project(
+      r.pts,
+      {
+        x:8,
+        y:8,
+        w:c.width-16,
+        h:c.height-16
+      }
+    );
+
+
+  path(
+    x,
+    xy,
+    xy.length-1
+  );
+
+
+  x.lineJoin='round';
+
+  x.lineCap='round';
+
+  x.lineWidth=5;
+
+  x.strokeStyle=
+    css('--acc');
+
+  x.stroke();
+
+}
+
+
+function list(){
+
+  const ul =
+    $('#rides');
+
+  ul.replaceChildren();
+
+
+  [
+    ...rides
+  ]
+    .sort(
+      (a,b)=>
+        b.date<a.date
+          ? -1
+          : 1
+    )
+    .forEach(r=>{
+
+      const li =
+        document.createElement(
+          'li'
+        );
+
+      li.className =
+        'ride'+
+        (
+          cur &&
+          cur.id===r.id
+            ? ' sel'
+            : ''
+        );
+
+
+      const open =
+        document.createElement(
+          'button'
+        );
+
+      open.className='open';
+
+
+      const c =
+        document.createElement(
+          'canvas'
+        );
+
+      c.width=108;
+
+      c.height=136;
+
+
+      thumb(c,r);
+
+
+      const w =
+        document.createElement(
+          'div'
+        );
+
+      const n =
+        document.createElement(
+          'div'
+        );
+
+      const m =
+        document.createElement(
+          'div'
+        );
+
+
+      n.className='nm';
+
+      n.textContent=r.name;
+
+
+      m.className='mt';
+
+      m.textContent =
+        (
+          derive(r)
+            .cum
+            .at(-1)/1000
+        ).toFixed(1)+
+        ' km, '+
+        new Date(
+          r.date
+        ).toLocaleDateString(
+          undefined,
+          {
+            day:'numeric',
+            month:'short',
+            year:'numeric'
+          }
+        );
+
+
+      w.style.minWidth='0';
+
+      w.append(
+        n,
+        m
+      );
+
+
+      open.append(
+        c,
+        w
+      );
+
+
+      open.onclick=()=>{
+        pick(r.id);
+      };
+
+
+      const del =
+        document.createElement(
+          'button'
+        );
+
+
+      del.className='del';
+
+      del.textContent='Delete';
+
+
+      del.onclick=()=>{
+
+        rides =
+          rides.filter(
+            q =>
+              q.id!==r.id
+          );
+
+
+        if(
+          cur &&
+          cur.id===r.id
+        ){
+
+          cur=null;
+
+        }
+
+
+        persist();
+
+        show();
+
+      };
+
+
+      li.append(
+        open,
+        del
+      );
+
+
+      ul.append(li);
+
+    });
+
+}
+
+
+function show(){
+
+  $('#empty').hidden =
+    Boolean(
+      rides.length ||
+      cur
+    );
+
+
+  $('#view').hidden =
+    !cur;
+
+
+  $('#listwrap').hidden =
+    !rides.length;
+
+
+  if(cur)
+    draw();
+
+
+  list();
+
+}
+
+
+function pick(id){
+
+  cur =
+    rides.find(
+      r =>
+        r.id===id
+    );
+
+
+  msg('');
+
+  show();
+
+
+  window.scrollTo({
+    top:0,
+    behavior:'smooth'
+  });
+
+}
+
+
+function add(r){
+
+  rides.push(r);
+
+  cur=r;
+
+  persist();
+
+  msg('');
+
+  show();
+
+}
+
+
+/* ============================================================
+   FILE IMPORT
+   ============================================================ */
+
+$('#file').onchange =
+  async e => {
+
+    const f =
+      e.target.files[0];
+
+    e.target.value='';
+
+
+    if(!f)
+      return;
+
+
+    try{
+
+      add(
+        parseGPX(
+          await f.text(),
+          f.name
+        )
+      );
+
+    }catch(err){
+
+      msg(
+        err.message
+      );
+
+    }
+
+  };
+
+
+$('#imp').onkeydown =
+  e => {
+
+    if(
+      e.key==='Enter' ||
+      e.key===' '
+    ){
+
+      e.preventDefault();
+
+      $('#file').click();
+
+    }
+
+  };
+
+
+/* ============================================================
+   TABS
+   ============================================================ */
+
+document
+  .querySelectorAll(
+    '.tabs button'
+  )
+  .forEach(
+    b =>
+      b.onclick=()=>{
+
+        tab=
+          b.dataset.tab;
+
+        msg('');
+
+        draw();
+
+      }
+  );
+
+
+/* ============================================================
+   STYLE SWITCHING
+   ============================================================ */
+
+document
+  .querySelectorAll(
+    '#styles button'
+  )
+  .forEach(
+    b =>
+      b.onclick=()=>{
+
+        style=
+          b.dataset.st;
+
+        draw();
+
+      }
+  );
+
+
+/* ============================================================
+   FLYOVER PLAYBACK
+   ============================================================ */
+
 $('#play').onclick=()=>{
- cancelAnimationFrame(raf);playing=true;cameraBearing=null;const t0=performance.now(),is3d=tab==='3d';
- const loop=now=>{const p=frame(now-t0);if(is3d)updateMap(p);render(cx,cv.width,cv.height,cur,vst(),p,is3d);if(now-t0<DUR)raf=requestAnimationFrame(loop);else{$('#play').textContent='Replay';playing=false}};raf=requestAnimationFrame(loop);
+
+  cancelAnimationFrame(raf);
+
+  playing=true;
+
+  cameraBearing=null;
+
+  const t0 =
+    performance.now();
+
+  const is3d =
+    tab==='3d';
+
+
+  const loop =
+    now => {
+
+      const elapsed =
+        now-t0;
+
+      const p =
+        frame(elapsed);
+
+
+      if(is3d)
+        updateMap(p);
+
+
+      render(
+        cx,
+        cv.width,
+        cv.height,
+        cur,
+        vst(),
+        p,
+        is3d
+      );
+
+
+      if(
+        elapsed<DUR
+      ){
+
+        raf =
+          requestAnimationFrame(
+            loop
+          );
+
+      }else{
+
+        $('#play')
+          .textContent='Replay';
+
+        playing=false;
+
+      }
+
+    };
+
+
+  raf =
+    requestAnimationFrame(
+      loop
+    );
+
 };
-$('#save_png').onclick=async()=>{if(busy||!cur)return;busy=true;draw();try{await savePNG()}finally{busy=false;draw()}};
-$('#save_vid').onclick=async()=>{if(busy||!cur)return;busy=true;draw();try{await saveVideo()}finally{busy=false;draw()}};
+
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+$('#start').onclick =
+  startRide;
+
+$('#pause').onclick =
+  pauseRide;
+
+$('#finish').onclick =
+  finishRide;
+
+
+$('#save_png').onclick =
+  async()=>{
+
+    if(
+      busy ||
+      !cur
+    )
+      return;
+
+
+    busy=true;
+
+    draw();
+
+
+    try{
+
+      await savePNG();
+
+    }finally{
+
+      busy=false;
+
+      draw();
+
+    }
+
+  };
+
+
+$('#save_vid').onclick =
+  async()=>{
+
+    if(
+      busy ||
+      !cur
+    )
+      return;
+
+
+    busy=true;
+
+    draw();
+
+
+    try{
+
+      await saveVideo();
+
+    }finally{
+
+      busy=false;
+
+      draw();
+
+    }
+
+  };
+
+
+/* ============================================================
+   START
+   ============================================================ */
 
 show();
-Promise.all([document.fonts.load('800 40px Archivo'),document.fonts.load('500 30px Archivo'),document.fonts.load('600 30px Archivo')]).then(()=>{if(cur)draw()}).catch(()=>{});
-</script>
-</body>
-</html>'''
 
-path = Path("/mnt/data/velo.html")
-path.write_text(html, encoding="utf-8")
-print(f"Created {path} ({len(html):,} characters).")
+
+Promise.all([
+
+  document.fonts.load(
+    '800 40px Archivo'
+  ),
+
+  document.fonts.load(
+    '500 30px Archivo'
+  ),
+
+  document.fonts.load(
+    '600 30px Archivo'
+  )
+
+])
+.then(()=>{
+  if(cur)
+    draw();
+})
+.catch(()=>{});
+
+
+</script>
+
+</body>
+</html>
