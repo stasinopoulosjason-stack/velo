@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Velo">
+<title>Velo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<style>
+:root{--bg:#F2F4F0;--ink:#14201B;--mute:#67736C;--line:#DCE1DB;--acc:#2A45F0;--accink:#fff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0D1310;--ink:#EAF0EB;--mute:#8A968E;--line:#24302A;--acc:#7F9BFF;--accink:#0D1310}}
+:root[data-theme="dark"]{--bg:#0D1310;--ink:#EAF0EB;--mute:#8A968E;--line:#24302A;--acc:#7F9BFF;--accink:#0D1310}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.45 Archivo,system-ui,-apple-system,sans-serif}
+.wrap{max-width:640px;margin:0 auto;padding:0 18px 48px}
+header{display:flex;align-items:center;justify-content:space-between;padding:18px 0 14px}
+h1{margin:0;font-size:30px;font-weight:800;letter-spacing:-.03em}
+h2{font-size:18px;font-weight:800;margin:36px 0 6px}
+.acts{display:flex;gap:8px}
+.btn{font:600 14px Archivo,system-ui,sans-serif;color:var(--ink);background:transparent;border:1.5px solid var(--line);border-radius:999px;padding:9px 16px;cursor:pointer;display:inline-flex;align-items:center}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:var(--accink)}
+.btn:disabled{opacity:.45;cursor:default}
+:focus-visible{outline:2.5px solid var(--acc);outline-offset:2px}
+.empty{padding:56px 0;color:var(--mute);max-width:44ch}
+.empty strong{display:block;color:var(--ink);font-size:22px;font-weight:800;margin-bottom:6px;letter-spacing:-.02em}
+.tabs{display:flex;gap:22px;border-bottom:1.5px solid var(--line);margin-bottom:14px}
+.tabs button{font:600 15px Archivo,system-ui,sans-serif;color:var(--mute);background:none;border:0;border-bottom:3px solid transparent;padding:10px 0;margin-bottom:-1.5px;cursor:pointer}
+.tabs button.on{color:var(--ink);border-color:var(--acc)}
+.stage{border-radius:14px;overflow:hidden;line-height:0;position:relative}
+#map-container{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;display:none}
+canvas#cv{width:100%;height:auto;aspect-ratio:4/5;display:block;position:relative;z-index:2}
+.stage.clear{background:conic-gradient(#8884 25%,#0000 0 50%,#8884 0 75%,#0000 0) 0 0/24px 24px,#556}
+.ctl{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+.seg{display:flex;border:1.5px solid var(--line);border-radius:999px;padding:3px}
+.seg button{font:600 13px Archivo,system-ui,sans-serif;color:var(--mute);background:none;border:0;border-radius:999px;padding:6px 14px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.seg button:disabled{opacity:.4;cursor:default}
+.row{display:flex;gap:8px}
+.msg{min-height:1.4em;margin:10px 0 0;color:var(--mute);font-size:14px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px}
+.stats b{display:block;font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.stats span{font-size:13px;color:var(--mute)}
+ul{list-style:none;margin:0;padding:0}
+li.ride{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1.5px solid var(--line)}
+li.ride button.open{display:flex;align-items:center;gap:14px;flex:1;min-width:0;background:none;border:0;color:inherit;text-align:left;cursor:pointer;padding:0;font:inherit}
+li.ride canvas{width:54px;height:68px;flex:none}
+.nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mt{font-size:13px;color:var(--mute)}
+li.ride.sel .nm{color:var(--acc)}
+.del{font:500 13px Archivo,system-ui,sans-serif;color:var(--mute);background:none;border:0;cursor:pointer;padding:8px}
+@media (max-width:420px){.stats b{font-size:20px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Velo</h1>
+  <div class="acts">
+    <button class="btn" id="demo">Demo ride</button>
+    <label class="btn pri" tabindex="0" id="imp">Import GPX<input id="file" type="file" accept=".gpx,application/gpx+xml,text/xml" hidden></label>
+  </div>
+</header>
+<section id="empty" class="empty">
+  <strong>Your rides show up here.</strong>
+  Import a GPX file from your bike computer or phone, or load the demo ride to see how Velo draws a route as an image and a flyover video.
+</section>
+<section id="view" hidden>
+  <div class="tabs" role="tablist">
+    <button role="tab" data-tab="img" class="on">Route image</button>
+    <button role="tab" data-tab="vid">Flyover video</button>
+    <button role="tab" data-tab="3d">3D flyover</button>
+  </div>
+  <div class="stage" id="stage">
+    <div id="map-container"></div>
+    <canvas id="cv" width="1080" height="1350" role="img" aria-label="Route preview"></canvas>
+  </div>
+  <div class="ctl">
+    <div class="seg" id="styles">
+      <button data-st="light" aria-pressed="true">Light</button>
+      <button data-st="dark" aria-pressed="false">Dark</button>
+      <button data-st="clear" aria-pressed="false">Clear</button>
+    </div>
+    <div class="row">
+      <button class="btn" id="play" hidden>Play</button>
+      <button class="btn pri" id="save_png" hidden>Save PNG</button>
+      <button class="btn pri" id="save_vid" hidden>Save video</button>
+    </div>
+  </div>
+  <p class="msg" id="msg" role="status"></p>
+  <div class="stats" id="stats"></div>
+</section>
+<section id="listwrap" hidden>
+  <h2>Rides</h2>
+  <ul id="rides"></ul>
+</section>
+</div>
+<script>
+const MAP_TILE_KEY = ''; // Optional key if using a private map/terrain provider
+const DEM_TILES = ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png' + (MAP_TILE_KEY ? '?key=' + MAP_TILE_KEY : '')];
+const STYLE_LIGHT = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+const STYLE_DARK = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+
+const $=s=>document.querySelector(s), R=Math.PI/180, DUR=9000;
+const cv=$('#cv'), cx=cv.getContext('2d');
+let rides=[], cur=null, tab='img', style='light', raf=0, playing=false, busy=false;
+let map, mapLoaded = false, currentMapStyle = '';
+
+try{rides=JSON.parse(localStorage.getItem('velo:rides')||'[]')}catch(e){}
+const msg=t=>{$('#msg').textContent=t||''};
+const persist=()=>{try{localStorage.setItem('velo:rides',JSON.stringify(rides.map(r=>({id:r.id,name:r.name,date:r.date,pts:r.pts}))))}catch(e){msg('Storage is full. Delete an old ride to keep new ones.')}};
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+/* ---------- ride maths ---------- */
+function derive(r){
+  if(r._d)return r._d;
+  const p=r.pts,n=p.length,cum=[0],ct=[0],cg=[0];
+  const hasT=p[0][3]!=null&&p[n-1][3]>p[0][3];
+  const el=p.map((q,i)=>{let s=0,c=0;for(let j=i-2;j<=i+2;j++)if(p[j]&&p[j][2]!=null){s+=p[j][2];c++}return c?s/c:0});
+  for(let i=1;i<n;i++){
+    const a=p[i-1],b=p[i];
+    const d=Math.hypot((b[1]-a[1])*R*Math.cos((a[0]+b[0])/2*R),(b[0]-a[0])*R)*6371000;
+    const dt=hasT?b[3]-a[3]:0, mv=hasT&&dt>0&&dt<300&&d/dt>0.3;
+    cum[i]=cum[i-1]+d; ct[i]=ct[i-1]+(mv?dt:0); cg[i]=cg[i-1]+Math.max(0,el[i]-el[i-1]);
+  }
+  return r._d={cum,ct,cg,el,hasT:hasT&&ct[n-1]>0,hasE:p.some(q=>q[2]!=null)};
+}
+function project(p,b){
+  let a=1e9,z=-1e9,l=1e9,o=-1e9;
+  for(const q of p){a=Math.min(a,q[0]);z=Math.max(z,q[0]);l=Math.min(l,q[1]);o=Math.max(o,q[1])}
+  const k=Math.cos((a+z)/2*R),w=Math.max((o-l)*k,1e-9),h=Math.max(z-a,1e-9),s=Math.min(b.w/w,b.h/h);
+  const ox=b.x+(b.w-w*s)/2,oy=b.y+(b.h-h*s)/2;
+  return p.map(q=>[ox+(q[1]-l)*k*s,oy+(z-q[0])*s]);
+}
+function path(x,xy,end){
+  const i=Math.floor(end);x.beginPath();x.moveTo(xy[0][0],xy[0][1]);
+  for(let j=1;j<=i;j++)x.lineTo(xy[j][0],xy[j][1]);
+  let tip=xy[i];
+  if(i<xy.length-1){const f=end-i,a=xy[i],b=xy[i+1];tip=[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f];x.lineTo(tip[0],tip[1])}
+  return tip;
+}
+const fmtT=s=>{s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),c=s%60,z=n=>String(n).padStart(2,'0');return h?[h+':'+z(m),'h']:[m+':'+z(c),'min']};
+const fit=(x,t,max)=>{if(x.measureText(t).width<=max)return t;while(t.length>1&&x.measureText(t+'…').width>max)t=t.slice(0,-1);return t+'…'};
+const dateStr=r=>new Date(r.date).toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+/* ---------- renderer (shared by PNG and video) ---------- */
+const T={
+  light:{bg:'#F2F4F0',ink:'#14201B',mute:'#67736C',acc:'#2A45F0',cas:'#F2F4F0',dot:'rgba(20,32,27,.09)'},
+  dark:{bg:'#0D1310',ink:'#EAF0EB',mute:'#8A968E',acc:'#7F9BFF',cas:'#0D1310',dot:'rgba(234,240,235,.08)'},
+  clear:{bg:null,ink:'#fff',mute:'rgba(255,255,255,.78)',acc:'#fff',cas:'rgba(0,0,0,.28)',dot:null}
+};
+const F=(w,px)=>`${w} ${px}px Archivo,system-ui,sans-serif`;
+
+function render(x,W,H,r,st,prog,is3d=false){
+  const t=T[st],d=derive(r),p=r.pts,n=p.length,s=W/1080,pad=90*s;
+  x.clearRect(0,0,W,H);x.textAlign='left';x.textBaseline='alphabetic';
+  if(!is3d && t.bg){
+    x.fillStyle=t.bg;x.fillRect(0,0,W,H);x.fillStyle=t.dot;
+    for(let a=60*s;a<W;a+=60*s)for(let b=60*s;b<H;b+=60*s){x.beginPath();x.arc(a,b,2.2*s,0,7);x.fill()}
+  }
+  
+  const ink = is3d ? (st==='dark'||st==='clear'?'#EAF0EB':'#14201B') : t.ink;
+  const mute = is3d ? (st==='dark'||st==='clear'?'#8A968E':'#67736C') : t.mute;
+  
+  x.fillStyle=ink;x.font=F(800,58*s);x.fillText(fit(x,r.name,W-2*pad),pad,150*s);
+  x.fillStyle=mute;x.font=F(500,30*s);x.fillText(dateStr(r),pad,196*s);
+  const e=prog*(n-1),i=Math.floor(e);
+  
+  if(!is3d) {
+    const xy=project(p,{x:pad,y:250*s,w:W-2*pad,h:620*s});
+    x.lineJoin=x.lineCap='round';
+    path(x,xy,e);x.lineWidth=20*s;x.strokeStyle=t.cas;x.stroke();
+    const tip=path(x,xy,e);x.lineWidth=11*s;x.strokeStyle=t.acc;x.stroke();
+    x.beginPath();x.arc(xy[0][0],xy[0][1],15*s,0,7);x.fillStyle=t.bg||'#fff';x.fill();x.lineWidth=7*s;x.strokeStyle=t.ink;x.stroke();
+    x.beginPath();x.arc(tip[0],tip[1],19*s,0,7);x.fillStyle=t.acc;x.fill();x.lineWidth=7*s;x.strokeStyle=t.bg||'#fff';x.stroke();
+  }
+
+  const col=(W-2*pad)/3,y=1000*s;
+  const stat=(k,v,u,l)=>{const px=pad+k*col;x.fillStyle=ink;x.font=F(800,76*s);x.fillText(v,px,y);
+    const w=x.measureText(v).width;x.fillStyle=mute;x.font=F(600,32*s);x.fillText(u,px+w+8*s,y);
+    x.font=F(500,28*s);x.fillText(l,px,y+46*s)};
+  stat(0,(d.cum[i]/1000).toFixed(1),'km','Distance');
+  if(d.hasT){const[v,u]=fmtT(d.ct[i]);stat(1,v,u,'Moving time')}
+  if(d.hasE)stat(2,String(Math.round(d.cg[i])),'m','Elevation gain');
+  
+  if(d.hasE){
+    let mn=Math.min(...d.el),mx=Math.max(...d.el);if(mx-mn<5)mx=mn+5;
+    const bx=pad,bw=W-2*pad,bot=1260*s,bh=150*s,X=k=>bx+k/(n-1)*bw,Y=k=>bot-(d.el[k]-mn)/(mx-mn)*bh;
+    x.beginPath();x.moveTo(X(0),bot);for(let k=0;k<=i;k++)x.lineTo(X(k),Y(k));x.lineTo(X(i),bot);x.closePath();
+    x.globalAlpha=.22;x.fillStyle=t.acc;x.fill();x.globalAlpha=1;
+    x.beginPath();for(let k=0;k<=i;k++)k?x.lineTo(X(k),Y(k)):x.moveTo(X(k),Y(k));
+    x.lineWidth=4*s;x.strokeStyle=t.acc;x.stroke();
+  }
+  x.fillStyle=mute;x.font=F(800,32*s);x.fillText('Velo',pad,1315*s);
+}
+const ease=u=>u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
+const frame=ms=>ease(Math.min(1,Math.max(0,(ms-600)/7200)));
+const vst=()=>(tab==='vid'||tab==='3d')&&style==='clear'?'dark':style;
+
+/* ---------- MapLibre 3D ---------- */
+function initMap() {
+  if (map) return;
+  map = new maplibregl.Map({
+    container: 'map-container',
+    style: style === 'dark' || style === 'clear' ? STYLE_DARK : STYLE_LIGHT,
+    interactive: false,
+    preserveDrawingBuffer: true,
+    pitch: 65,
+    zoom: 13
+  });
+  
+  map.on('styledata', () => {
+    if (!map.getSource('terrain')) {
+      map.addSource('terrain', { type: 'raster-dem', tiles: DEM_TILES, encoding: 'terrarium', tileSize: 256, maxzoom: 14 });
+      map.setTerrain({ source: 'terrain', exaggeration: 1.5 });
+      map.addSource('route', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } } });
+      map.addLayer({ id: 'route-line', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': css('--acc'), 'line-width': 6 } });
+      mapLoaded = true;
+      if (cur && tab === '3d' && !playing) updateMap(1);
+    }
+  });
+  map.on('error', e => msg('Map error: ' + (e.error?.message || 'Failed to load terrain.')));
+}
+
+function updateMap(prog) {
+  if (!map || !mapLoaded || !cur) return;
+  const p = cur.pts, n = p.length, e = prog * (n - 1), i = Math.floor(e);
+  let tip = [p[i][1], p[i][0]];
+  let a = p[i], b = p[Math.min(n-1, i+1)];
+  if (i < n - 1) {
+    const f = e - i;
+    tip = [a[1] + (b[1] - a[1]) * f, a[0] + (b[0] - a[0]) * f];
+  }
+  const p1 = p[Math.max(0, i-2)], p2 = p[Math.min(n-1, i+2)];
+  const dLon = (p2[1] - p1[1]) * R, lat1 = p1[0] * R, lat2 = p2[0] * R;
+  const y = Math.sin(dLon) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+  const bearing = Math.atan2(y, x) * 180 / Math.PI;
+
+  const coords = p.slice(0, i+1).map(q => [q[1], q[0]]);
+  if (i < n - 1) coords.push(tip);
+
+  if (map.getSource('route')) {
+    map.getSource('route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
+  }
+  map.jumpTo({ center: tip, bearing: bearing, pitch: 65, zoom: 13.5 });
+}
+
+/* ---------- UI ---------- */
+function draw(){
+  cancelAnimationFrame(raf);playing=false;
+  const is3d=tab==='3d', vid=tab==='vid'||is3d, W=vid?720:1080, H=vid?900:1350;
+  if(cv.width!==W){cv.width=W;cv.height=H}
+  if(vid&&style==='clear')style='dark';
+
+  if (is3d) {
+    $('#map-container').style.display = 'block';
+    initMap();
+    if (mapLoaded) {
+      const targetStyle = style === 'dark' || style === 'clear' ? STYLE_DARK : STYLE_LIGHT;
+      if (currentMapStyle !== targetStyle) {
+        currentMapStyle = targetStyle;
+        map.setStyle(targetStyle);
+      } else {
+        updateMap(1);
+      }
+    }
+  } else {
+    $('#map-container').style.display = 'none';
+  }
+
+  render(cx,W,H,cur,vst(),1,is3d);
+  
+  $('#stage').classList.toggle('clear',style==='clear');
+  document.querySelectorAll('#styles button').forEach(b=>{b.setAttribute('aria-pressed',b.dataset.st===style);if(b.dataset.st==='clear')b.disabled=vid});
+  document.querySelectorAll('.tabs button').forEach(b=>{const on=b.dataset.tab===tab;b.classList.toggle('on',on);b.setAttribute('aria-selected',on)});
+  
+  $('#play').hidden = tab === 'img';
+  $('#play').textContent = 'Play';
+  $('#save_png').hidden = tab === 'vid';
+  $('#save_vid').hidden = tab === 'img';
+  $('#save_png').textContent = is3d ? 'Save 3D PNG' : 'Save PNG';
+  $('#save_vid').textContent = is3d ? 'Save 3D video' : 'Save video';
+  $('#save_png').disabled = busy;
+  $('#save_vid').disabled = busy;
+
+  cv.setAttribute('aria-label',`Route of ${cur.name}`);
+  const d=derive(cur),km=d.cum[d.cum.length-1]/1000,it=[[km.toFixed(1)+' km','Distance']];
+  if(d.hasT){it.push([fmtT(d.ct[d.ct.length-1]).join(' '),'Moving time']);it.push([(km/(d.ct[d.ct.length-1]/3600)).toFixed(1)+' km/h','Average speed'])}
+  if(d.hasE)it.push([Math.round(d.cg[d.cg.length-1])+' m','Elevation gain']);
+  $('#stats').replaceChildren(...it.map(([v,l])=>{const e=document.createElement('div'),b=document.createElement('b'),s=document.createElement('span');b.textContent=v;s.textContent=l;e.append(b,s);return e}));
+}
+function thumb(c,r){
+  const x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);
+  const xy=project(r.pts,{x:8,y:8,w:c.width-16,h:c.height-16});
+  path(x,xy,xy.length-1);x.lineJoin=x.lineCap='round';x.lineWidth=5;x.strokeStyle=css('--acc');x.stroke();
+}
+function list(){
+  const ul=$('#rides');ul.replaceChildren();
+  [...rides].sort((a,b)=>b.date<a.date?-1:1).forEach(r=>{
+    const li=document.createElement('li');li.className='ride'+(cur&&cur.id===r.id?' sel':'');
+    const o=document.createElement('button');o.className='open';
+    const c=document.createElement('canvas');c.width=108;c.height=136;thumb(c,r);
+    const w=document.createElement('div'),n=document.createElement('div'),m=document.createElement('div');
+    n.className='nm';n.textContent=r.name;m.className='mt';
+    m.textContent=(derive(r).cum.slice(-1)[0]/1000).toFixed(1)+' km, '+new Date(r.date).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'});
+    w.style.minWidth=0;w.append(n,m);o.append(c,w);o.onclick=()=>pick(r.id);
+    const x=document.createElement('button');x.className='del';x.textContent='Delete';x.setAttribute('aria-label','Delete '+r.name);
+    x.onclick=()=>{rides=rides.filter(q=>q.id!==r.id);if(cur&&cur.id===r.id)cur=null;persist();show()};
+    li.append(o,x);ul.append(li);
+  });
+}
+function show(){
+  $('#empty').hidden=rides.length>0;$('#listwrap').hidden=!rides.length;
+  if(!cur&&rides.length)cur=[...rides].sort((a,b)=>b.date<a.date?-1:1)[0];
+  $('#view').hidden=!cur;
+  if(cur)draw();
+  list();
+}
+function pick(id){cur=rides.find(r=>r.id===id);msg('');show();window.scrollTo({top:0,behavior:'smooth'})}
+function add(r){rides.push(r);cur=r;persist();msg('');show()}
+
+/* ---------- import ---------- */
+function parseGPX(txt,fn){
+  const doc=new DOMParser().parseFromString(txt,'application/xml');
+  if(doc.querySelector('parsererror'))throw new Error('That file isn’t valid GPX.');
+  let els=[...doc.getElementsByTagName('trkpt')];if(!els.length)els=[...doc.getElementsByTagName('rtept')];
+  if(els.length<2)throw new Error('No route points found in this GPX file.');
+  const g=(e,t)=>{const v=e.getElementsByTagName(t)[0];return v?v.textContent:null};
+  let pts=els.map(e=>{const el=g(e,'ele'),tm=g(e,'time');
+    return[+(+e.getAttribute('lat')).toFixed(5),+(+e.getAttribute('lon')).toFixed(5),el!=null?+el:null,tm?Date.parse(tm)/1000:null]})
+    .filter(q=>isFinite(q[0])&&isFinite(q[1]));
+  if(pts.length<2)throw new Error('No route points found in this GPX file.');
+  const step=Math.ceil(pts.length/1200);
+  if(step>1){const k=pts.filter((_,i)=>i%step===0);if(k[k.length-1]!==pts[pts.length-1])k.push(pts[pts.length-1]);pts=k}
+  const nm=doc.querySelector('trk > name, metadata > name'),t0=pts.find(q=>q[3]!=null&&isFinite(q[3]));
+  return{id:String(Date.now()),name:(nm&&nm.textContent.trim())||fn.replace(/\.gpx$/i,''),
+    date:t0?new Date(t0[3]*1000).toISOString():new Date().toISOString(),pts}
+}
+$('#file').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{add(parseGPX(await f.text(),f.name))}catch(err){msg(err.message)}
+};
+$('#imp').onkeydown=e=>{if(e.key==='Enter'\vert{}\vert{}e.key===' '){e.preventDefault();$('#file').click()}};
+$('#demo').onclick=()=>{
+  const pts=[];let t=Date.now()/1000-3*3600;const n=360;
+  for(let i=0;i<=n;i++){
+    const a=i/n*Math.PI*2,r=1+.28*Math.sin(2*a+.6)+.16*Math.sin(3*a+2)+.07*Math.sin(7*a);
+    pts.push([+(45.5+Math.sin(a)*r*.042).toFixed(5),+(-122.7+Math.cos(a)*r*.06).toFixed(5),
+      +(70+48*Math.sin(2*a+1)+28*Math.sin(5*a)+12*Math.sin(11*a)).toFixed(1),Math.round(t)]);
+    t+=14+3*Math.sin(3*a);
+  }
+  add({id:String(Date.now()),name:'Sunday loop',date:new Date(Date.now()-3*3600e3).toISOString(),pts});
+};
+
+/* ---------- tabs, styles, play ---------- */
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;msg('');draw()});
+document.querySelectorAll('#styles button').forEach(b=>b.onclick=()=>{style=b.dataset.st;draw()});
+$('#play').onclick=()=>{
+  cancelAnimationFrame(raf);const t0=performance.now(); playing=true;
+  const is3d=tab==='3d';
+  const loop=now=>{
+    const ms=now-t0;
+    if(is3d) updateMap(frame(ms));
+    render(cx,cv.width,cv.height,cur,vst(),frame(ms),is3d);
+    if(ms<DUR)raf=requestAnimationFrame(loop);else { $('#play').textContent='Replay'; playing=false; }
+  };
+  raf=requestAnimationFrame(loop);
+};
+
+/* ---------- saving ---------- */
+const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'ride';
+async function offer(name,blob){
+  try {
+    const file = new File([blob], name, { type: blob.type });
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file] });
+      msg('Shared.');
+    } else {
+      throw new Error('no share');
+    }
+  } catch(e) {
+    if (e.name === 'AbortError') { msg('Share cancelled.'); return; }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    msg('Saved.');
+  }
+}
+
+async function savePNG(){
+  const is3d=tab==='3d';
+  const c=document.createElement('canvas');c.width=1080;c.height=1350;
+  const x=c.getContext('2d');
+  if(is3d && map){
+    x.drawImage(map.getCanvas(),0,0,1080,1350);
+    render(x,1080,1350,cur,style,1,true);
+  }else{
+    render(x,1080,1350,cur,style,1);
+  }
+  const blob=await new Promise(r=>c.toBlob(r,'image/png'));
+  await offer(slug(cur.name)+(is3d?'-3d-velo.png':'-velo.png'),blob);
+}
+
+async function saveVideo(){
+  const mime=['video/mp4;codecs=avc1','video/webm;codecs=vp9','video/webm'].find(m=>window.MediaRecorder&&MediaRecorder.isTypeSupported(m));
+  if(!mime){msg('This browser can’t record video. Save the PNG instead.');return}
+  const is3d=tab==='3d';
+  const c=document.createElement('canvas');c.width=720;c.height=900;
+  const x=c.getContext('2d'),st=style==='clear'?'dark':style,chunks=[];
+  const mr=new MediaRecorder(c.captureStream(30),{mimeType:mime,videoBitsPerSecond:5e6});
+  mr.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+  const stopped=new Promise(r=>mr.onstop=r);
+  msg('Recording the flyover. Keep this tab open for about 10 seconds.');
+  mr.start();const t0=performance.now();
+  await new Promise(res=>{
+    const loop=now=>{
+      const ms=now-t0;
+      if(is3d){
+        updateMap(frame(ms));
+        x.clearRect(0,0,720,900);
+        x.drawImage(map.getCanvas(),0,0,720,900);
+        render(x,720,900,cur,st,frame(ms),true);
+      } else {
+        render(x,720,900,cur,st,frame(ms));
+      }
+      ms<DUR?requestAnimationFrame(loop):res();
+    };
+    requestAnimationFrame(loop);
+  });
+  mr.stop();await stopped;
+  await offer(slug(cur.name)+(is3d?'-3d-velo.':'-velo.')+(mime.startsWith('video/mp4')?'mp4':'webm'),new Blob(chunks,{type:mime.split(';')[0]}));
+}
+
+$('#save_png').onclick=async()=>{
+  if(busy||!cur)return;busy=true;$('#save_png').disabled=true;
+  try{await savePNG()}finally{busy=false;$('#save_png').disabled=false}
+};
+$('#save_vid').onclick=async()=>{
+  if(busy||!cur)return;busy=true;$('#save_vid').disabled=true;
+  try{await saveVideo()}finally{busy=false;$('#save_vid').disabled=false}
+};
+
+/* ---------- start ---------- */
+show();
+Promise.all([document.fonts.load('800 40px Archivo'),document.fonts.load('500 30px Archivo'),document.fonts.load('600 30px Archivo')]).then(()=>{if(cur)draw();list()}).catch(()=>{});
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>list());
+</script>
+</body>
+</html>
